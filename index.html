@@ -148,10 +148,12 @@
     </div>
 
     <script>
-        const socket = io('https://socketio-webrtc-signaling.onrender.com', { 
-            reconnectionAttempts: 5, 
-            reconnectionDelay: 1000 
+        // Use a public Socket.IO server for testing (replace with your own if needed)
+        const socket = io('https://webrtc-signaling-server.onrender.com', {
+            reconnectionAttempts: 5,
+            reconnectionDelay: 1000
         });
+
         let localConnection = null;
         let dataChannel = null;
         let currentCode = null;
@@ -171,29 +173,44 @@
             status: document.getElementById('status')
         };
 
-        // Create RTCPeerConnection with robust STUN/TURN servers
+        // Create RTCPeerConnection with STUN and TURN servers
         function createPeerConnection() {
             const configuration = {
                 iceServers: [
                     { urls: 'stun:stun.l.google.com:19302' },
                     { urls: 'stun:stun1.l.google.com:19302' },
-                    { 
-                        urls: 'turn:openrelay.metered.ca:443',
+                    {
+                        urls: [
+                            'turn:openrelay.metered.ca:80',
+                            'turn:openrelay.metered.ca:443',
+                            'turn:openrelay.metered.ca:443?transport=tcp'
+                        ],
                         username: 'openrelayproject',
                         credential: 'openrelayproject'
                     }
-                ]
+                ],
+                iceTransportPolicy: 'all',
+                iceCandidatePoolSize: 10
             };
             localConnection = new RTCPeerConnection(configuration);
 
+            // Handle ICE candidates
             localConnection.onicecandidate = (event) => {
                 if (event.candidate) {
                     socket.emit('signal', { code: currentCode, data: { type: 'candidate', candidate: event.candidate } });
+                    elements.status.textContent = `Status: Gathering ICE candidates...`;
                 }
             };
 
+            // Monitor connection state
             localConnection.onconnectionstatechange = () => {
                 updateStatus(localConnection.connectionState);
+            };
+
+            // Handle ICE connection state for additional debugging
+            localConnection.oniceconnectionstatechange = () => {
+                elements.status.textContent = `Status: ICE ${localConnection.iceConnectionState}`;
+                console.log('ICE Connection State:', localConnection.iceConnectionState);
             };
 
             return localConnection;
@@ -204,7 +221,7 @@
             return Math.floor(10000 + Math.random() * 90000).toString();
         }
 
-        // Update status and UI based on connection state
+        // Update status based on connection state
         function updateStatus(state) {
             switch (state) {
                 case 'connected':
@@ -222,7 +239,7 @@
                     cleanup();
                     break;
                 case 'connecting':
-                    elements.status.textContent = 'Status: Connecting...';
+                    elements.status.textContent = `Status: Connecting to: ${currentCode}`;
                     break;
             }
         }
@@ -239,14 +256,24 @@
                         const answer = await localConnection.createAnswer();
                         await localConnection.setLocalDescription(answer);
                         socket.emit('signal', { code: currentCode, data: localConnection.localDescription });
+                        elements.status.textContent = 'Status: Answering offer...';
                     } else if (data.type === 'answer' && isInitiator) {
                         await localConnection.setRemoteDescription(new RTCSessionDescription(data));
+                        elements.status.textContent = 'Status: Received answer, connecting...';
                     } else if (data.type === 'candidate') {
                         await localConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+                        elements.status.textContent = 'Status: Adding ICE candidate...';
                     }
                 } catch (err) {
                     elements.status.textContent = `Status: Error - ${err.message}`;
                     console.error('Signaling error:', err);
+                }
+            });
+
+            // Debug peer count for connection initiation
+            socket.on('peerCount', (count) => {
+                if (count >= 2 && isInitiator) {
+                    elements.status.textContent = 'Status: Friend joined, connecting...';
                 }
             });
         }
@@ -260,14 +287,19 @@
             dataChannel = localConnection.createDataChannel('chat');
             setupDataChannel();
 
-            const offer = await localConnection.createOffer();
-            await localConnection.setLocalDescription(offer);
-            socket.emit('signal', { code: currentCode, data: localConnection.localDescription });
-            socket.emit('join', currentCode);
+            try {
+                const offer = await localConnection.createOffer();
+                await localConnection.setLocalDescription(offer);
+                socket.emit('signal', { code: currentCode, data: localConnection.localDescription });
+                socket.emit('join', currentCode);
 
-            elements.codeDisplay.textContent = `Your Code: ${currentCode}`;
-            elements.status.textContent = 'Status: Waiting for friend...';
-            setupSignaling();
+                elements.codeDisplay.textContent = `Your Code: ${currentCode}`;
+                elements.status.textContent = 'Status: Waiting for friend...';
+                setupSignaling();
+            } catch (err) {
+                elements.status.textContent = `Status: Error - ${err.message}`;
+                console.error('Error creating offer:', err);
+            }
         }
 
         // Join a chat as responder
@@ -291,7 +323,7 @@
             };
 
             elements.codeDisplay.textContent = `Connecting to: ${code}`;
-            elements.status.textContent = 'Status: Connecting...';
+            elements.status.textContent = `Status: Connecting to: ${code}`;
             socket.emit('join', code);
             setupSignaling();
         }
@@ -299,7 +331,7 @@
         // Setup data channel for messaging
         function setupDataChannel() {
             dataChannel.onopen = () => {
-                // Handled by connectionstatechange
+                elements.status.textContent = 'Status: Data channel open!';
             };
             dataChannel.onmessage = (event) => {
                 addMessage(`Friend: ${event.data}`);
@@ -308,7 +340,7 @@
                 cleanup();
             };
             dataChannel.onerror = (err) => {
-                elements.status.textContent = `Status: Error - ${err.message}`;
+                elements.status.textContent = `Status: Data channel error - ${err.message}`;
                 console.error('Data channel error:', err);
             };
         }
@@ -332,8 +364,13 @@
                 localConnection.close();
                 localConnection = null;
             }
+            if (currentCode) {
+                socket.emit('leave', currentCode);
+                currentCode = null;
+            }
             document.body.classList.remove('connected');
             elements.status.style.animation = 'none';
+            elements.codeDisplay.textContent = '';
         }
 
         // Event Listeners
@@ -360,13 +397,19 @@
             elements.messageInput.value = '';
         };
 
-        // Socket reconnection handling
+        // Socket connection handling
         socket.on('connect', () => {
+            elements.status.textContent = 'Status: Connected to signaling server';
             if (currentCode) socket.emit('join', currentCode);
         });
 
         socket.on('disconnect', () => {
             elements.status.textContent = 'Status: Server disconnected, reconnecting...';
+        });
+
+        socket.on('connect_error', (err) => {
+            elements.status.textContent = `Status: Signaling server error - ${err.message}`;
+            console.error('Socket connection error:', err);
         });
 
         window.onbeforeunload = cleanup;
