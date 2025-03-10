@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Quick Wrap - Pure P2P Chat</title>
+    <title>Quick Wrap - Serverless P2P Chat</title>
     <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;700&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.1/socket.io.min.js"></script>
+    <script src="https://unpkg.com/simple-peer@9.11.1/simplepeer.min.js"></script>
     <style>
         body {
             margin: 0;
@@ -38,7 +38,7 @@
         }
         #sidebar {
             width: 100%;
-            height: 30%;
+            height: 40%;
             background: rgba(0, 0, 0, 0.8);
             padding: 15px;
             box-sizing: border-box;
@@ -47,7 +47,7 @@
         }
         #chatWindow {
             width: 100%;
-            height: 70%;
+            height: 60%;
             background: rgba(10, 10, 20, 0.95);
             padding: 20px;
             overflow-y: auto;
@@ -89,7 +89,7 @@
             transform: scale(1.05);
             box-shadow: 0 0 15px #0ff;
         }
-        #codeInput {
+        #codeInput, #signalInput {
             width: 70%;
             padding: 12px;
             background: rgba(255, 255, 255, 0.15);
@@ -98,6 +98,18 @@
             border-radius: 5px;
             margin: 5px 0;
             font-size: 1rem;
+        }
+        #signalOutput {
+            width: 70%;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid #f0f;
+            color: #fff;
+            border-radius: 5px;
+            margin: 5px 0;
+            font-size: 0.9rem;
+            word-wrap: break-word;
+            cursor: pointer;
         }
         #codeDisplay, #status {
             margin: 10px 0;
@@ -127,7 +139,7 @@
 </head>
 <body>
     <div id="intro">
-        <h1>Quick Wrap: Pure P2P Chat</h1>
+        <h1>Quick Wrap: Serverless P2P Chat</h1>
         <p>Generate a code, share it, and chat!</p>
         <button id="enterBtn">Start Chatting</button>
     </div>
@@ -139,6 +151,9 @@
             <button id="joinBtn">Join Chat</button>
             <p id="codeDisplay"></p>
             <p id="status">Status: Disconnected</p>
+            <textarea id="signalOutput" placeholder="Your signal data will appear here. Copy and send to your friend." readonly></textarea>
+            <input id="signalInput" placeholder="Paste your friend's signal data here">
+            <button id="signalBtn">Submit Signal Data</button>
         </div>
         <div id="chatWindow">
             <div id="messages"></div>
@@ -148,14 +163,7 @@
     </div>
 
     <script>
-        // Use a public Socket.IO server for testing (replace with your own if needed)
-        const socket = io('https://webrtc-signaling-server.onrender.com', {
-            reconnectionAttempts: 5,
-            reconnectionDelay: 1000
-        });
-
-        let localConnection = null;
-        let dataChannel = null;
+        let peer = null;
         let currentCode = null;
         let isInitiator = false;
 
@@ -170,179 +178,77 @@
             messages: document.getElementById('messages'),
             messageInput: document.getElementById('messageInput'),
             sendBtn: document.getElementById('sendBtn'),
-            status: document.getElementById('status')
+            status: document.getElementById('status'),
+            signalOutput: document.getElementById('signalOutput'),
+            signalInput: document.getElementById('signalInput'),
+            signalBtn: document.getElementById('signalBtn')
         };
-
-        // Create RTCPeerConnection with STUN and TURN servers
-        function createPeerConnection() {
-            const configuration = {
-                iceServers: [
-                    { urls: 'stun:stun.l.google.com:19302' },
-                    { urls: 'stun:stun1.l.google.com:19302' },
-                    {
-                        urls: [
-                            'turn:openrelay.metered.ca:80',
-                            'turn:openrelay.metered.ca:443',
-                            'turn:openrelay.metered.ca:443?transport=tcp'
-                        ],
-                        username: 'openrelayproject',
-                        credential: 'openrelayproject'
-                    }
-                ],
-                iceTransportPolicy: 'all',
-                iceCandidatePoolSize: 10
-            };
-            localConnection = new RTCPeerConnection(configuration);
-
-            // Handle ICE candidates
-            localConnection.onicecandidate = (event) => {
-                if (event.candidate) {
-                    socket.emit('signal', { code: currentCode, data: { type: 'candidate', candidate: event.candidate } });
-                    elements.status.textContent = `Status: Gathering ICE candidates...`;
-                }
-            };
-
-            // Monitor connection state
-            localConnection.onconnectionstatechange = () => {
-                updateStatus(localConnection.connectionState);
-            };
-
-            // Handle ICE connection state for additional debugging
-            localConnection.oniceconnectionstatechange = () => {
-                elements.status.textContent = `Status: ICE ${localConnection.iceConnectionState}`;
-                console.log('ICE Connection State:', localConnection.iceConnectionState);
-            };
-
-            return localConnection;
-        }
 
         // Generate a 5-digit numeric code
         function generateShortCode() {
             return Math.floor(10000 + Math.random() * 90000).toString();
         }
 
-        // Update status based on connection state
-        function updateStatus(state) {
-            switch (state) {
-                case 'connected':
-                    document.body.classList.add('connected');
-                    elements.status.textContent = 'Status: Connected - Let’s Chat!';
-                    elements.status.style.animation = 'pulse 1s infinite';
-                    addMessage('System: Connected! Start texting your friend.');
-                    break;
-                case 'disconnected':
-                case 'failed':
-                    document.body.classList.remove('connected');
-                    elements.status.textContent = 'Status: Disconnected';
-                    elements.status.style.animation = 'none';
-                    addMessage('System: Connection lost.');
-                    cleanup();
-                    break;
-                case 'connecting':
-                    elements.status.textContent = `Status: Connecting to: ${currentCode}`;
-                    break;
-            }
-        }
-
-        // Handle signaling messages
-        function setupSignaling() {
-            socket.on('signal', async (msg) => {
-                if (msg.code !== currentCode || !localConnection) return;
-                const { data } = msg;
-
-                try {
-                    if (data.type === 'offer' && !isInitiator) {
-                        await localConnection.setRemoteDescription(new RTCSessionDescription(data));
-                        const answer = await localConnection.createAnswer();
-                        await localConnection.setLocalDescription(answer);
-                        socket.emit('signal', { code: currentCode, data: localConnection.localDescription });
-                        elements.status.textContent = 'Status: Answering offer...';
-                    } else if (data.type === 'answer' && isInitiator) {
-                        await localConnection.setRemoteDescription(new RTCSessionDescription(data));
-                        elements.status.textContent = 'Status: Received answer, connecting...';
-                    } else if (data.type === 'candidate') {
-                        await localConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
-                        elements.status.textContent = 'Status: Adding ICE candidate...';
-                    }
-                } catch (err) {
-                    elements.status.textContent = `Status: Error - ${err.message}`;
-                    console.error('Signaling error:', err);
+        // Create a new SimplePeer instance
+        function createPeer(initiator) {
+            peer = new SimplePeer({
+                initiator: initiator,
+                trickle: false,
+                config: {
+                    iceServers: [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' },
+                        {
+                            urls: [
+                                'turn:openrelay.metered.ca:80',
+                                'turn:openrelay.metered.ca:443',
+                                'turn:openrelay.metered.ca:443?transport=tcp'
+                            ],
+                            username: 'openrelayproject',
+                            credential: 'openrelayproject'
+                        }
+                    ]
                 }
             });
 
-            // Debug peer count for connection initiation
-            socket.on('peerCount', (count) => {
-                if (count >= 2 && isInitiator) {
-                    elements.status.textContent = 'Status: Friend joined, connecting...';
-                }
+            // Handle signaling data
+            peer.on('signal', (data) => {
+                elements.signalOutput.value = JSON.stringify(data);
+                elements.status.textContent = initiator
+                    ? 'Status: Copy the signal data above and send to your friend.'
+                    : 'Status: Waiting for your friend’s signal data...';
             });
-        }
 
-        // Generate code and start as initiator
-        async function generateCode() {
-            cleanup();
-            isInitiator = true;
-            currentCode = generateShortCode();
-            localConnection = createPeerConnection();
-            dataChannel = localConnection.createDataChannel('chat');
-            setupDataChannel();
+            // Handle connection
+            peer.on('connect', () => {
+                document.body.classList.add('connected');
+                elements.status.textContent = 'Status: Connected - Let’s Chat!';
+                elements.status.style.animation = 'pulse 1s infinite';
+                addMessage('System: Connected! Start texting your friend.');
+                elements.signalOutput.value = '';
+                elements.signalInput.value = '';
+            });
 
-            try {
-                const offer = await localConnection.createOffer();
-                await localConnection.setLocalDescription(offer);
-                socket.emit('signal', { code: currentCode, data: localConnection.localDescription });
-                socket.emit('join', currentCode);
+            // Handle incoming messages
+            peer.on('data', (data) => {
+                addMessage(`Friend: ${data}`);
+            });
 
-                elements.codeDisplay.textContent = `Your Code: ${currentCode}`;
-                elements.status.textContent = 'Status: Waiting for friend...';
-                setupSignaling();
-            } catch (err) {
+            // Handle errors
+            peer.on('error', (err) => {
                 elements.status.textContent = `Status: Error - ${err.message}`;
-                console.error('Error creating offer:', err);
-            }
-        }
-
-        // Join a chat as responder
-        async function joinChat(code) {
-            if (!code || code.length !== 5 || !/^\d+$/.test(code)) {
-                elements.status.textContent = 'Status: Invalid code';
-                return;
-            }
-            if (localConnection) {
-                elements.status.textContent = 'Status: Already connected';
-                return;
-            }
-
-            cleanup();
-            isInitiator = false;
-            currentCode = code;
-            localConnection = createPeerConnection();
-            localConnection.ondatachannel = (event) => {
-                dataChannel = event.channel;
-                setupDataChannel();
-            };
-
-            elements.codeDisplay.textContent = `Connecting to: ${code}`;
-            elements.status.textContent = `Status: Connecting to: ${code}`;
-            socket.emit('join', code);
-            setupSignaling();
-        }
-
-        // Setup data channel for messaging
-        function setupDataChannel() {
-            dataChannel.onopen = () => {
-                elements.status.textContent = 'Status: Data channel open!';
-            };
-            dataChannel.onmessage = (event) => {
-                addMessage(`Friend: ${event.data}`);
-            };
-            dataChannel.onclose = () => {
+                console.error('Peer error:', err);
                 cleanup();
-            };
-            dataChannel.onerror = (err) => {
-                elements.status.textContent = `Status: Data channel error - ${err.message}`;
-                console.error('Data channel error:', err);
-            };
+            });
+
+            // Handle connection close
+            peer.on('close', () => {
+                document.body.classList.remove('connected');
+                elements.status.textContent = 'Status: Disconnected';
+                elements.status.style.animation = 'none';
+                addMessage('System: Connection lost.');
+                cleanup();
+            });
         }
 
         // Add message to the chat
@@ -356,21 +262,17 @@
 
         // Cleanup function to reset connection
         function cleanup() {
-            if (dataChannel) {
-                dataChannel.close();
-                dataChannel = null;
+            if (peer) {
+                peer.destroy();
+                peer = null;
             }
-            if (localConnection) {
-                localConnection.close();
-                localConnection = null;
-            }
-            if (currentCode) {
-                socket.emit('leave', currentCode);
-                currentCode = null;
-            }
+            currentCode = null;
+            isInitiator = false;
             document.body.classList.remove('connected');
             elements.status.style.animation = 'none';
             elements.codeDisplay.textContent = '';
+            elements.signalOutput.value = '';
+            elements.signalInput.value = '';
         }
 
         // Event Listeners
@@ -379,38 +281,67 @@
             elements.chatPage.style.display = 'block';
         };
 
-        elements.codeBtn.onclick = generateCode;
+        elements.codeBtn.onclick = () => {
+            cleanup();
+            isInitiator = true;
+            currentCode = generateShortCode();
+            elements.codeDisplay.textContent = `Your Code: ${currentCode}`;
+            elements.status.textContent = 'Status: Generating signal data...';
+            createPeer(true);
+        };
 
         elements.joinBtn.onclick = () => {
             const code = elements.codeInput.value.trim();
-            joinChat(code);
+            if (!code || code.length !== 5 || !/^\d+$/.test(code)) {
+                elements.status.textContent = 'Status: Invalid code';
+                return;
+            }
+            if (peer) {
+                elements.status.textContent = 'Status: Already connected';
+                return;
+            }
+
+            cleanup();
+            isInitiator = false;
+            currentCode = code;
+            elements.codeDisplay.textContent = `Connecting to: ${code}`;
+            elements.status.textContent = 'Status: Generating signal data...';
+            createPeer(false);
+        };
+
+        elements.signalBtn.onclick = () => {
+            const signalData = elements.signalInput.value.trim();
+            if (!signalData || !peer) {
+                elements.status.textContent = 'Status: No signal data or peer not initialized';
+                return;
+            }
+            try {
+                peer.signal(JSON.parse(signalData));
+                elements.status.textContent = 'Status: Processing signal data...';
+            } catch (err) {
+                elements.status.textContent = `Status: Invalid signal data - ${err.message}`;
+                console.error('Signal error:', err);
+            }
         };
 
         elements.sendBtn.onclick = () => {
             const text = elements.messageInput.value.trim();
-            if (!text || !dataChannel || dataChannel.readyState !== 'open') {
+            if (!text || !peer) {
                 elements.status.textContent = 'Status: Not connected or empty message';
                 return;
             }
-            dataChannel.send(text);
+            peer.send(text);
             addMessage(`You: ${text}`);
             elements.messageInput.value = '';
         };
 
-        // Socket connection handling
-        socket.on('connect', () => {
-            elements.status.textContent = 'Status: Connected to signaling server';
-            if (currentCode) socket.emit('join', currentCode);
-        });
-
-        socket.on('disconnect', () => {
-            elements.status.textContent = 'Status: Server disconnected, reconnecting...';
-        });
-
-        socket.on('connect_error', (err) => {
-            elements.status.textContent = `Status: Signaling server error - ${err.message}`;
-            console.error('Socket connection error:', err);
-        });
+        // Copy signal data to clipboard on click
+        elements.signalOutput.onclick = () => {
+            if (elements.signalOutput.value) {
+                navigator.clipboard.writeText(elements.signalOutput.value);
+                elements.status.textContent = 'Status: Signal data copied to clipboard!';
+            }
+        };
 
         window.onbeforeunload = cleanup;
     </script>
