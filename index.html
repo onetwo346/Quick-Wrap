@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Quick Wrap - Pure P2P Chat</title>
     <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;700&display=swap" rel="stylesheet">
     <style>
@@ -12,9 +12,13 @@
             background: linear-gradient(135deg, #1a1a3d, #2a0a4d);
             color: #fff;
             height: 100vh;
+            overflow: hidden;
             display: flex;
             justify-content: center;
             align-items: center;
+            -webkit-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
         }
         #intro {
             text-align: center;
@@ -23,6 +27,7 @@
         #intro h1 {
             font-size: clamp(1.5rem, 5vw, 2.5rem);
             text-shadow: 0 0 10px #0ff, 0 0 20px #f0f;
+            margin: 0;
         }
         #chatPage {
             display: none;
@@ -39,6 +44,7 @@
             padding: 15px;
             box-sizing: border-box;
             overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
         }
         #chatWindow {
             width: 100%;
@@ -47,6 +53,7 @@
             padding: 20px;
             overflow-y: auto;
             box-sizing: border-box;
+            -webkit-overflow-scrolling: touch;
         }
         #messageInput {
             width: 70%;
@@ -57,6 +64,7 @@
             border-radius: 5px;
             margin-right: 10px;
             font-size: 1rem;
+            box-sizing: border-box;
         }
         .message {
             margin: 10px 0;
@@ -78,6 +86,7 @@
             transition: transform 0.2s, box-shadow 0.2s;
             margin: 5px;
             font-size: 1rem;
+            touch-action: manipulation;
         }
         button:hover {
             transform: scale(1.05);
@@ -92,11 +101,13 @@
             border-radius: 5px;
             margin: 5px 0;
             font-size: 1rem;
+            box-sizing: border-box;
         }
         #codeDisplay, #status {
             margin: 10px 0;
             font-size: 1rem;
             color: #0ff;
+            word-break: break-all;
         }
         @media (min-width: 769px) {
             #sidebar { width: 25%; height: 100%; float: left; }
@@ -116,7 +127,7 @@
     <div id="chatPage">
         <div id="sidebar">
             <button id="codeBtn">Generate Code</button>
-            <input id="codeInput" placeholder="Enter Friend's Code" maxlength="5">
+            <input id="codeInput" placeholder="Enter Friend's Code" maxlength="5" inputmode="numeric">
             <button id="joinBtn">Join Chat</button>
             <p id="codeDisplay"></p>
             <p id="status">Status: Disconnected</p>
@@ -132,6 +143,7 @@
         let localConnection = null;
         let dataChannel = null;
         let currentCode = null;
+        let isInitiator = false;
 
         const elements = {
             intro: document.getElementById('intro'),
@@ -147,13 +159,24 @@
             status: document.getElementById('status')
         };
 
-        // Create RTCPeerConnection with STUN and TURN servers
+        // Create RTCPeerConnection with robust STUN/TURN servers
         function createPeerConnection() {
             const configuration = {
                 iceServers: [
                     { urls: 'stun:stun.l.google.com:19302' },
-                    { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' }
-                ]
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                    { 
+                        urls: [
+                            'turn:openrelay.metered.ca:80',
+                            'turn:openrelay.metered.ca:443',
+                            'turn:openrelay.metered.ca:443?transport=tcp'
+                        ],
+                        username: 'openrelayproject',
+                        credential: 'openrelayproject'
+                    }
+                ],
+                iceTransportPolicy: 'all',
+                iceCandidatePoolSize: 10
             };
             return new RTCPeerConnection(configuration);
         }
@@ -163,7 +186,27 @@
             return Math.floor(10000 + Math.random() * 90000).toString();
         }
 
-        // Generate code and initiate connection
+        // Handle ICE candidates and signaling via console (temporary bridge)
+        function setupSignaling(connection, code, isInitiator) {
+            connection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    console.log(`ICE Candidate for ${code}:`, JSON.stringify(event.candidate));
+                }
+            };
+            connection.onnegotiationneeded = async () => {
+                if (isInitiator) {
+                    try {
+                        const offer = await connection.createOffer();
+                        await connection.setLocalDescription(offer);
+                        console.log(`Offer SDP for ${code}:`, JSON.stringify(connection.localDescription));
+                    } catch (err) {
+                        elements.status.textContent = `Status: Error - ${err.message}`;
+                    }
+                }
+            };
+        }
+
+        // Generate code and start as initiator
         async function generateCode() {
             if (localConnection) {
                 localConnection.close();
@@ -171,46 +214,47 @@
                 dataChannel = null;
             }
             localConnection = createPeerConnection();
+            isInitiator = true;
             dataChannel = localConnection.createDataChannel('chat');
             setupDataChannel();
+            setupSignaling(localConnection, currentCode, true);
 
-            try {
-                const offer = await localConnection.createOffer();
-                await localConnection.setLocalDescription(offer);
-                currentCode = generateShortCode();
-                elements.codeDisplay.textContent = `Your Code: ${currentCode}`;
-                elements.status.textContent = 'Status: Waiting for friend to join...';
-                console.log('Offer SDP (share this manually):', JSON.stringify(localConnection.localDescription));
-            } catch (err) {
-                elements.status.textContent = `Status: Error - ${err.message}`;
-            }
+            currentCode = generateShortCode();
+            elements.codeDisplay.textContent = `Your Code: ${currentCode}`;
+            elements.status.textContent = 'Status: Waiting for friend...';
         }
 
-        // Join a chat with friend's code
+        // Join a chat as responder
         async function joinChat(code) {
-            if (!code || localConnection) {
+            if (!code || localConnection || code.length !== 5 || !/^\d+$/.test(code)) {
                 elements.status.textContent = 'Status: Invalid code or already connected';
                 return;
             }
 
             localConnection = createPeerConnection();
+            isInitiator = false;
+            currentCode = code;
             localConnection.ondatachannel = (event) => {
                 dataChannel = event.channel;
                 setupDataChannel();
             };
+            setupSignaling(localConnection, code, false);
 
+            elements.codeDisplay.textContent = `Connecting to: ${code}`;
+            elements.status.textContent = 'Status: Connecting...';
+
+            // Temporary manual SDP exchange (to be replaced with signaling server later)
+            const offerSDP = prompt(`Paste the Offer SDP for code ${code} from your friend's console:`);
+            if (!offerSDP) {
+                elements.status.textContent = 'Status: No SDP provided';
+                return;
+            }
             try {
-                // Prompt user to paste the offer SDP manually
-                const offerSDP = prompt('Paste your friend’s Offer SDP here:');
-                if (!offerSDP) throw new Error('No SDP provided');
                 await localConnection.setRemoteDescription(JSON.parse(offerSDP));
                 const answer = await localConnection.createAnswer();
                 await localConnection.setLocalDescription(answer);
-                currentCode = code;
-                elements.codeDisplay.textContent = `Connected with code: ${code}`;
-                elements.status.textContent = 'Status: Waiting for connection...';
-                console.log('Answer SDP (share this back):', JSON.stringify(localConnection.localDescription));
-                alert('Share this Answer SDP with your friend:\n' + JSON.stringify(localConnection.localDescription));
+                console.log(`Answer SDP for ${code}:`, JSON.stringify(localConnection.localDescription));
+                alert(`Share this Answer SDP with your friend:\n${JSON.stringify(localConnection.localDescription)}`);
             } catch (err) {
                 elements.status.textContent = `Status: Error - ${err.message}`;
             }
@@ -228,6 +272,7 @@
             dataChannel.onclose = () => {
                 elements.status.textContent = 'Status: Disconnected';
                 dataChannel = null;
+                localConnection = null;
             };
             dataChannel.onerror = (err) => {
                 elements.status.textContent = `Status: Error - ${err.message}`;
@@ -258,8 +303,8 @@
 
         elements.sendBtn.onclick = () => {
             const text = elements.messageInput.value.trim();
-            if (!text || !dataChannel) {
-                elements.status.textContent = !dataChannel ? 'Status: Not connected' : 'Status: Empty message';
+            if (!text || !dataChannel || dataChannel.readyState !== 'open') {
+                elements.status.textContent = !dataChannel ? 'Status: Not connected' : 'Status: Empty message or not ready';
                 return;
             }
             dataChannel.send(text);
@@ -267,7 +312,7 @@
             elements.messageInput.value = '';
         };
 
-        // Cleanup on page unload
+        // Prevent iPhone zoom and ensure cleanup
         window.onbeforeunload = () => {
             if (localConnection) localConnection.close();
         };
