@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Quick Wrap - Secure P2P Chat</title>
+    <title>Quick Wrap - Pure P2P Chat</title>
     <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;700&display=swap" rel="stylesheet">
     <style>
         body {
@@ -35,17 +34,16 @@
             left: 0;
         }
         #sidebar {
-            width: 25%;
-            height: 100%;
+            width: 100%;
+            height: 30%;
             background: rgba(0, 0, 0, 0.8);
-            float: left;
             padding: 15px;
             box-sizing: border-box;
+            overflow-x: auto;
         }
         #chatWindow {
-            width: 75%;
-            height: 100%;
-            float: right;
+            width: 100%;
+            height: 70%;
             background: rgba(10, 10, 20, 0.95);
             padding: 20px;
             overflow-y: auto;
@@ -80,14 +78,24 @@
             border-radius: 5px;
             font-weight: 700;
             transition: transform 0.2s, box-shadow 0.2s;
+            margin: 5px;
         }
         button:hover {
             transform: scale(1.05);
             box-shadow: 0 0 15px #0ff;
         }
+        #codeInput {
+            width: 70%;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid #0ff;
+            color: #fff;
+            border-radius: 5px;
+            margin: 5px 0;
+        }
         #codeDisplay {
             margin: 10px 0;
-            font-size: 1.1rem;
+            font-size: 1rem;
             color: #0ff;
             word-break: break-all;
         }
@@ -95,10 +103,17 @@
             margin: 10px 0;
             font-size: 1rem;
         }
-        @media (max-width: 768px) {
-            #sidebar { width: 100%; height: 30%; float: none; }
-            #chatWindow { width: 100%; height: 70%; float: none; }
-            #messageInput { width: 60%; }
+        @media (min-width: 769px) {
+            #sidebar {
+                width: 25%;
+                height: 100%;
+                float: left;
+            }
+            #chatWindow {
+                width: 75%;
+                height: 100%;
+                float: right;
+            }
         }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideIn { from { transform: translateX(-20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
@@ -106,15 +121,15 @@
 </head>
 <body>
     <div id="intro">
-        <h1>Quick Wrap: Secure P2P Chat</h1>
-        <p>Generate a code, share it, and chat instantly</p>
+        <h1>Quick Wrap: Pure P2P Chat</h1>
+        <p>Generate a code, share it manually, and chat</p>
         <button id="enterBtn">Start Chatting</button>
     </div>
 
     <div id="chatPage">
         <div id="sidebar">
             <button id="codeBtn">Generate Code</button>
-            <input id="codeInput" placeholder="Enter Friend's Code" maxlength="36">
+            <input id="codeInput" placeholder="Enter Friend's Code" maxlength="1000">
             <button id="joinBtn">Join Chat</button>
             <p id="codeDisplay"></p>
             <p id="status">Status: Disconnected</p>
@@ -126,19 +141,11 @@
         </div>
     </div>
 
-    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script>
-        const peer = new Peer({
-            host: 'peerjs-server.herokuapp.com', // Reliable public PeerJS server
-            secure: true,
-            port: 443,
-            config: { 'iceServers': [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'turn:relay1.expressturn.com:3478', username: 'user', credential: 'pass' }
-            ]}
-        });
-        let conn = null;
+        let localConnection = null;
+        let dataChannel = null;
         const storedMessages = JSON.parse(localStorage.getItem('chatHistory')) || {};
+        let currentCode = null;
 
         const elements = {
             intro: document.getElementById('intro'),
@@ -154,52 +161,101 @@
             status: document.getElementById('status')
         };
 
-        // PeerJS Connection Handling
-        peer.on('open', (id) => {
-            console.log('My Peer ID:', id);
-            elements.codeDisplay.textContent = `Your Code: ${id}`;
-            loadChatHistory(id);
-        });
+        // Create RTCPeerConnection
+        function createPeerConnection() {
+            const configuration = {
+                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+            };
+            return new RTCPeerConnection(configuration);
+        }
 
-        peer.on('connection', (connection) => {
-            conn = connection;
-            setupConnection();
-            elements.status.textContent = 'Status: Connected';
-        });
+        // Generate and display connection code
+        async function generateCode() {
+            if (localConnection) {
+                localConnection.close();
+            }
+            localConnection = createPeerConnection();
+            dataChannel = localConnection.createDataChannel('chat');
+            setupDataChannel();
 
-        peer.on('error', (err) => {
-            console.error('PeerJS Error:', err);
-            elements.status.textContent = `Status: Error - ${err.type}`;
-        });
+            try {
+                const offer = await localConnection.createOffer();
+                await localConnection.setLocalDescription(offer);
+                const code = JSON.stringify({
+                    sdp: localConnection.localDescription,
+                    timestamp: Date.now()
+                });
+                currentCode = code;
+                elements.codeDisplay.textContent = `Your Code: ${code}`;
+                elements.status.textContent = 'Status: Ready - Share this code with your friend';
+                collectIceCandidates();
+            } catch (err) {
+                elements.status.textContent = `Status: Error - ${err.message}`;
+            }
+        }
 
-        function setupConnection() {
-            conn.on('open', () => {
-                console.log('Connection established');
-            });
-            conn.on('data', (data) => {
-                addMessage(`Friend: ${data}`, conn.peer);
-            });
-            conn.on('close', () => {
+        // Join with a friend's code
+        async function joinChat(code) {
+            if (!code || localConnection) {
+                elements.status.textContent = 'Status: Invalid code or already connected';
+                return;
+            }
+
+            try {
+                const parsedCode = JSON.parse(code);
+                localConnection = createPeerConnection();
+                localConnection.ondatachannel = (event) => {
+                    dataChannel = event.channel;
+                    setupDataChannel();
+                };
+
+                localConnection.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        // No server to send candidates, handled manually
+                    }
+                };
+
+                await localConnection.setRemoteDescription(parsedCode.sdp);
+                const answer = await localConnection.createAnswer();
+                await localConnection.setLocalDescription(answer);
+
+                elements.status.textContent = 'Status: Connected - Send this answer to your friend';
+                currentCode = JSON.stringify({
+                    sdp: localConnection.localDescription,
+                    timestamp: Date.now()
+                });
+                elements.codeDisplay.textContent = `Your Answer: ${currentCode}`;
+                collectIceCandidates();
+            } catch (err) {
+                elements.status.textContent = `Status: Error - ${err.message}`;
+            }
+        }
+
+        // Setup data channel for messaging
+        function setupDataChannel() {
+            dataChannel.onopen = () => {
+                elements.status.textContent = 'Status: Connected';
+            };
+            dataChannel.onmessage = (event) => {
+                addMessage(`Friend: ${event.data}`, currentCode);
+            };
+            dataChannel.onclose = () => {
                 elements.status.textContent = 'Status: Disconnected';
-                conn = null;
-            });
+                dataChannel = null;
+            };
         }
 
-        function generateCode() {
-            elements.codeDisplay.textContent = `Your Code: ${peer.id}`;
-            return peer.id;
+        // Collect ICE candidates (manual exchange needed)
+        function collectIceCandidates() {
+            localConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    console.log('New ICE candidate:', event.candidate);
+                    // In a serverless setup, you'd need to manually share this with the other peer
+                }
+            };
         }
 
-        function joinChat(code) {
-            if (!code) return;
-            conn = peer.connect(code, { reliable: true });
-            conn.on('open', () => {
-                setupConnection();
-                loadChatHistory(code);
-            });
-        }
-
-        function addMessage(text, peerId = peer.id) {
+        function addMessage(text, peerId = currentCode) {
             const msg = document.createElement('div');
             msg.className = 'message';
             msg.textContent = text;
@@ -216,7 +272,7 @@
 
         function loadChatHistory(peerId) {
             if (storedMessages[peerId]) {
-                elements.messages.innerHTML = ''; // Clear current messages
+                elements.messages.innerHTML = '';
                 storedMessages[peerId].forEach(msg => {
                     addMessage(msg.text, peerId);
                 });
@@ -233,16 +289,16 @@
 
         elements.joinBtn.onclick = () => {
             const code = elements.codeInput.value.trim();
-            if (code) joinChat(code);
+            joinChat(code);
         };
 
         elements.sendBtn.onclick = () => {
             const text = elements.messageInput.value.trim();
-            if (!text || !conn) {
-                if (!conn) elements.status.textContent = 'Status: Not connected';
+            if (!text || !dataChannel) {
+                if (!dataChannel) elements.status.textContent = 'Status: Not connected';
                 return;
             }
-            conn.send(text);
+            dataChannel.send(text);
             addMessage(`You: ${text}`);
             elements.messageInput.value = '';
         };
