@@ -85,22 +85,15 @@
             transform: scale(1.05);
             box-shadow: 0 0 15px #0ff;
         }
-        #paymentModal {
-            display: none;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.9);
-            padding: 30px;
-            border: 2px solid #0ff;
-            border-radius: 10px;
-            z-index: 1000;
-        }
         #codeDisplay {
             margin: 10px 0;
             font-size: 1.1rem;
             color: #0ff;
+            word-break: break-all;
+        }
+        #status {
+            margin: 10px 0;
+            font-size: 1rem;
         }
         @media (max-width: 768px) {
             #sidebar { width: 100%; height: 30%; float: none; }
@@ -114,7 +107,7 @@
 <body>
     <div id="intro">
         <h1>Quick Wrap: Secure P2P Chat</h1>
-        <p>End-to-end encrypted, serverless communication</p>
+        <p>Generate a code, share it, and chat instantly</p>
         <button id="enterBtn">Start Chatting</button>
     </div>
 
@@ -133,17 +126,8 @@
         </div>
     </div>
 
-    <div id="paymentModal">
-        <h2>Upgrade to Premium</h2>
-        <p>Free: 50 messages/day | Premium: Unlimited ($5 one-time)</p>
-        <button id="stripeBtn">Pay with Stripe</button>
-        <button id="closeModal">Use Free Tier</button>
-    </div>
-
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-    <script src="https://js.stripe.com/v3/"></script>
     <script>
-        const stripe = Stripe('pk_test_51YOURSTRIPEPUBLICKEYHERE'); // Replace with your Stripe public key
         const peer = new Peer({
             host: 'peerjs-server.herokuapp.com', // Reliable public PeerJS server
             secure: true,
@@ -154,9 +138,6 @@
             ]}
         });
         let conn = null;
-        let messageCount = 0;
-        const MAX_FREE_MESSAGES = 50;
-        let isPremium = false;
         const storedMessages = JSON.parse(localStorage.getItem('chatHistory')) || {};
 
         const elements = {
@@ -170,9 +151,6 @@
             messages: document.getElementById('messages'),
             messageInput: document.getElementById('messageInput'),
             sendBtn: document.getElementById('sendBtn'),
-            paymentModal: document.getElementById('paymentModal'),
-            stripeBtn: document.getElementById('stripeBtn'),
-            closeModal: document.getElementById('closeModal'),
             status: document.getElementById('status')
         };
 
@@ -238,40 +216,10 @@
 
         function loadChatHistory(peerId) {
             if (storedMessages[peerId]) {
+                elements.messages.innerHTML = ''; // Clear current messages
                 storedMessages[peerId].forEach(msg => {
                     addMessage(msg.text, peerId);
                 });
-            }
-        }
-
-        // Payment Handling
-        async function checkPremium() {
-            const premiumKey = localStorage.getItem('premiumKey');
-            if (premiumKey) {
-                isPremium = true;
-                elements.paymentModal.style.display = 'none';
-            } else {
-                elements.paymentModal.style.display = 'block';
-            }
-        }
-
-        async function handleStripePayment() {
-            const response = await fetch('https://your-backend.herokuapp.com/create-checkout-session', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ amount: 500 }) // $5 in cents
-            });
-            const { sessionId } = await response.json();
-            stripe.redirectToCheckout({ sessionId });
-        }
-
-        // Reset free message count daily
-        function resetMessageCount() {
-            const lastReset = localStorage.getItem('lastReset');
-            const today = new Date().toDateString();
-            if (lastReset !== today) {
-                messageCount = 0;
-                localStorage.setItem('lastReset', today);
             }
         }
 
@@ -279,8 +227,6 @@
         elements.enterBtn.onclick = () => {
             elements.intro.style.display = 'none';
             elements.chatPage.style.display = 'block';
-            resetMessageCount();
-            checkPremium();
         };
 
         elements.codeBtn.onclick = () => generateCode();
@@ -292,30 +238,14 @@
 
         elements.sendBtn.onclick = () => {
             const text = elements.messageInput.value.trim();
-            if (!text || !conn) return;
-            if (!isPremium && messageCount >= MAX_FREE_MESSAGES) {
-                alert('Free tier limit reached (50 messages/day). Upgrade to Premium!');
+            if (!text || !conn) {
+                if (!conn) elements.status.textContent = 'Status: Not connected';
                 return;
             }
             conn.send(text);
             addMessage(`You: ${text}`);
-            messageCount++;
             elements.messageInput.value = '';
         };
-
-        elements.stripeBtn.onclick = handleStripePayment;
-
-        elements.closeModal.onclick = () => {
-            elements.paymentModal.style.display = 'none';
-        };
-
-        // Handle Stripe redirect success
-        if (window.location.search.includes('success')) {
-            localStorage.setItem('premiumKey', 'stripe_success');
-            isPremium = true;
-            elements.paymentModal.style.display = 'none';
-            alert('Premium unlocked successfully!');
-        }
     </script>
 </body>
 </html>
