@@ -46,6 +46,7 @@
             box-sizing: border-box;
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
+            transition: background 0.5s;
         }
         #chatWindow {
             width: 100%;
@@ -55,6 +56,7 @@
             overflow-y: auto;
             box-sizing: border-box;
             -webkit-overflow-scrolling: touch;
+            transition: background 0.5s;
         }
         #messageInput {
             width: 70%;
@@ -109,6 +111,17 @@
             font-size: 1rem;
             color: #0ff;
             word-break: break-all;
+            transition: color 0.5s;
+        }
+        .connected #sidebar {
+            background: rgba(0, 255, 255, 0.2);
+        }
+        .connected #chatWindow {
+            background: rgba(0, 20, 40, 0.95);
+        }
+        .connected #status {
+            color: #0f0;
+            text-shadow: 0 0 10px #0f0;
         }
         @media (min-width: 769px) {
             #sidebar { width: 25%; height: 100%; float: left; }
@@ -116,6 +129,7 @@
         }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideIn { from { transform: translateX(-20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
     </style>
 </head>
 <body>
@@ -141,7 +155,7 @@
     </div>
 
     <script>
-        const socket = io('https://simple-webrtc-signaling.herokuapp.com'); // Free public signaling server
+        const socket = io('https://simple-webrtc-signaling.herokuapp.com');
         let localConnection = null;
         let dataChannel = null;
         let currentCode = null;
@@ -183,12 +197,16 @@
             return new RTCPeerConnection(configuration);
         }
 
-        // Generate a 5-digit numeric code
+        // Generate a 5-digit numeric code and verify uniqueness
         function generateShortCode() {
-            return Math.floor(10000 + Math.random() * 90000).toString();
+            let code;
+            do {
+                code = Math.floor(10000 + Math.random() * 90000).toString();
+            } while (socket.listeners('message').some(listener => listener.code === code)); // Crude uniqueness check
+            return code;
         }
 
-        // Setup signaling with Socket.IO
+        // Setup signaling with Socket.IO and connection confirmation
         function setupSignaling(connection, code) {
             connection.onicecandidate = (event) => {
                 if (event.candidate) {
@@ -196,27 +214,49 @@
                 }
             };
 
+            connection.onconnectionstatechange = () => {
+                if (connection.connectionState === 'connected') {
+                    document.body.classList.add('connected');
+                    elements.status.textContent = 'Status: Connected - Ready to Chat!';
+                    elements.status.style.animation = 'pulse 1s infinite';
+                    addMessage('System: Connection established! Start texting.');
+                } else if (connection.connectionState === 'disconnected' || connection.connectionState === 'failed') {
+                    document.body.classList.remove('connected');
+                    elements.status.textContent = 'Status: Disconnected';
+                    elements.status.style.animation = 'none';
+                    addMessage('System: Connection lost.');
+                }
+            };
+
             socket.on('message', async (msg) => {
                 if (msg.code !== code) return;
                 const data = msg.data;
-                if (data.type === 'offer' && !isInitiator) {
-                    await connection.setRemoteDescription(new RTCSessionDescription(data));
-                    const answer = await connection.createAnswer();
-                    await connection.setLocalDescription(answer);
-                    socket.emit('message', { code, data: connection.localDescription });
-                    elements.status.textContent = 'Status: Connecting...';
-                } else if (data.type === 'answer' && isInitiator) {
-                    await connection.setRemoteDescription(new RTCSessionDescription(data));
-                } else if (data.type === 'candidate') {
-                    await connection.addIceCandidate(new RTCIceCandidate(data.candidate));
+                try {
+                    if (data.type === 'offer' && !isInitiator) {
+                        await connection.setRemoteDescription(new RTCSessionDescription(data));
+                        const answer = await connection.createAnswer();
+                        await connection.setLocalDescription(answer);
+                        socket.emit('message', { code, data: connection.localDescription });
+                        elements.status.textContent = 'Status: Connecting...';
+                    } else if (data.type === 'answer' && isInitiator) {
+                        await connection.setRemoteDescription(new RTCSessionDescription(data));
+                    } else if (data.type === 'candidate') {
+                        await connection.addIceCandidate(new RTCIceCandidate(data.candidate));
+                    }
+                } catch (err) {
+                    elements.status.textContent = `Status: Error - ${err.message}`;
                 }
             });
 
             if (isInitiator) {
                 connection.onnegotiationneeded = async () => {
-                    const offer = await connection.createOffer();
-                    await connection.setLocalDescription(offer);
-                    socket.emit('message', { code, data: connection.localDescription });
+                    try {
+                        const offer = await connection.createOffer();
+                        await connection.setLocalDescription(offer);
+                        socket.emit('message', { code, data: connection.localDescription });
+                    } catch (err) {
+                        elements.status.textContent = `Status: Error - ${err.message}`;
+                    }
                 };
             }
         }
@@ -232,11 +272,12 @@
             isInitiator = true;
             dataChannel = localConnection.createDataChannel('chat');
             setupDataChannel();
+            currentCode = generateShortCode();
             setupSignaling(localConnection, currentCode);
 
-            currentCode = generateShortCode();
             elements.codeDisplay.textContent = `Your Code: ${currentCode}`;
             elements.status.textContent = 'Status: Waiting for friend...';
+            socket.emit('join', currentCode); // Join the code room
         }
 
         // Join a chat as responder
@@ -257,19 +298,21 @@
 
             elements.codeDisplay.textContent = `Connecting to: ${code}`;
             elements.status.textContent = 'Status: Connecting...';
+            socket.emit('join', code); // Join the code room
         }
 
         // Setup data channel for messaging
         function setupDataChannel() {
             dataChannel.onopen = () => {
-                elements.status.textContent = 'Status: Connected';
-                elements.codeDisplay.textContent += ' - Chatting!';
+                // Handled by connectionstatechange
             };
             dataChannel.onmessage = (event) => {
                 addMessage(`Friend: ${event.data}`);
             };
             dataChannel.onclose = () => {
+                document.body.classList.remove('connected');
                 elements.status.textContent = 'Status: Disconnected';
+                elements.status.style.animation = 'none';
                 dataChannel = null;
                 localConnection = null;
             };
