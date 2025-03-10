@@ -11,7 +11,6 @@
             font-family: 'Exo 2', sans-serif;
             background: linear-gradient(135deg, #1a1a3d, #2a0a4d);
             color: #fff;
-            overflow: hidden;
             height: 100vh;
             display: flex;
             justify-content: center;
@@ -59,9 +58,6 @@
             margin-right: 10px;
             font-size: 1rem;
         }
-        #messages {
-            min-height: 80%;
-        }
         .message {
             margin: 10px 0;
             padding: 12px;
@@ -87,7 +83,7 @@
             transform: scale(1.05);
             box-shadow: 0 0 15px #0ff;
         }
-        #codeInput, #candidateInput {
+        #codeInput {
             width: 70%;
             padding: 12px;
             background: rgba(255, 255, 255, 0.15);
@@ -97,28 +93,14 @@
             margin: 5px 0;
             font-size: 1rem;
         }
-        #candidateInput { height: 60px; }
-        #codeDisplay {
+        #codeDisplay, #status {
             margin: 10px 0;
             font-size: 1rem;
             color: #0ff;
-            word-break: break-all;
-        }
-        #status {
-            margin: 10px 0;
-            font-size: 1rem;
         }
         @media (min-width: 769px) {
-            #sidebar {
-                width: 25%;
-                height: 100%;
-                float: left;
-            }
-            #chatWindow {
-                width: 75%;
-                height: 100%;
-                float: right;
-            }
+            #sidebar { width: 25%; height: 100%; float: left; }
+            #chatWindow { width: 75%; height: 100%; float: right; }
         }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideIn { from { transform: translateX(-20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
@@ -127,7 +109,7 @@
 <body>
     <div id="intro">
         <h1>Quick Wrap: Pure P2P Chat</h1>
-        <p>Generate a code, share it manually, and chat</p>
+        <p>Generate a code, share it, and chat!</p>
         <button id="enterBtn">Start Chatting</button>
     </div>
 
@@ -136,8 +118,6 @@
             <button id="codeBtn">Generate Code</button>
             <input id="codeInput" placeholder="Enter Friend's Code" maxlength="5">
             <button id="joinBtn">Join Chat</button>
-            <textarea id="candidateInput" placeholder="Paste friend's ICE candidates here" rows="3"></textarea>
-            <button id="addCandidatesBtn">Add Candidates</button>
             <p id="codeDisplay"></p>
             <p id="status">Status: Disconnected</p>
         </div>
@@ -151,7 +131,6 @@
     <script>
         let localConnection = null;
         let dataChannel = null;
-        const storedSessions = JSON.parse(localStorage.getItem('chatSessions')) || {};
         let currentCode = null;
 
         const elements = {
@@ -161,8 +140,6 @@
             codeBtn: document.getElementById('codeBtn'),
             joinBtn: document.getElementById('joinBtn'),
             codeInput: document.getElementById('codeInput'),
-            candidateInput: document.getElementById('candidateInput'),
-            addCandidatesBtn: document.getElementById('addCandidatesBtn'),
             codeDisplay: document.getElementById('codeDisplay'),
             messages: document.getElementById('messages'),
             messageInput: document.getElementById('messageInput'),
@@ -170,12 +147,12 @@
             status: document.getElementById('status')
         };
 
-        // Create RTCPeerConnection
+        // Create RTCPeerConnection with STUN and TURN servers
         function createPeerConnection() {
             const configuration = {
                 iceServers: [
                     { urls: 'stun:stun.l.google.com:19302' },
-                    { urls: 'stun:stun1.l.google.com:19302' }
+                    { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' }
                 ]
             };
             return new RTCPeerConnection(configuration);
@@ -186,7 +163,7 @@
             return Math.floor(10000 + Math.random() * 90000).toString();
         }
 
-        // Generate and store connection code
+        // Generate code and initiate connection
         async function generateCode() {
             if (localConnection) {
                 localConnection.close();
@@ -201,59 +178,39 @@
                 const offer = await localConnection.createOffer();
                 await localConnection.setLocalDescription(offer);
                 currentCode = generateShortCode();
-                storedSessions[currentCode] = {
-                    sdp: localConnection.localDescription,
-                    candidates: [],
-                    answer: null,
-                    messages: []
-                };
-                localStorage.setItem('chatSessions', JSON.stringify(storedSessions));
-                elements.codeDisplay.textContent = `Your Code: ${currentCode}\nShare this code with your friend!`;
-                elements.status.textContent = 'Status: Ready - Share this code';
-                collectIceCandidates();
+                elements.codeDisplay.textContent = `Your Code: ${currentCode}`;
+                elements.status.textContent = 'Status: Waiting for friend to join...';
+                console.log('Offer SDP (share this manually):', JSON.stringify(localConnection.localDescription));
             } catch (err) {
                 elements.status.textContent = `Status: Error - ${err.message}`;
             }
         }
 
-        // Join with a friend's code
+        // Join a chat with friend's code
         async function joinChat(code) {
-            if (!code || localConnection || !storedSessions[code]) {
+            if (!code || localConnection) {
                 elements.status.textContent = 'Status: Invalid code or already connected';
                 return;
             }
 
+            localConnection = createPeerConnection();
+            localConnection.ondatachannel = (event) => {
+                dataChannel = event.channel;
+                setupDataChannel();
+            };
+
             try {
-                const peerData = storedSessions[code];
-                localConnection = createPeerConnection();
-                localConnection.ondatachannel = (event) => {
-                    dataChannel = event.channel;
-                    setupDataChannel();
-                };
-
-                localConnection.onicecandidate = (event) => {
-                    if (event.candidate) {
-                        storedSessions[currentCode].candidates.push(event.candidate);
-                        elements.codeDisplay.textContent += `\nYour ICE Candidate: ${JSON.stringify(event.candidate)}`;
-                    }
-                };
-
-                await localConnection.setRemoteDescription(peerData.sdp);
+                // Prompt user to paste the offer SDP manually
+                const offerSDP = prompt('Paste your friend’s Offer SDP here:');
+                if (!offerSDP) throw new Error('No SDP provided');
+                await localConnection.setRemoteDescription(JSON.parse(offerSDP));
                 const answer = await localConnection.createAnswer();
                 await localConnection.setLocalDescription(answer);
-                storedSessions[code].answer = localConnection.localDescription;
-                localStorage.setItem('chatSessions', JSON.stringify(storedSessions));
-
-                peerData.candidates.forEach(candidate => {
-                    localConnection.addIceCandidate(candidate).catch(err => {
-                        elements.status.textContent = `Status: Candidate Error - ${err.message}`;
-                    });
-                });
-
-                elements.codeDisplay.textContent = `Your Answer: ${JSON.stringify(storedSessions[code].answer)}\nShare this with your friend!`;
-                elements.status.textContent = 'Status: Connected - Share your answer';
                 currentCode = code;
-                loadChatHistory(code);
+                elements.codeDisplay.textContent = `Connected with code: ${code}`;
+                elements.status.textContent = 'Status: Waiting for connection...';
+                console.log('Answer SDP (share this back):', JSON.stringify(localConnection.localDescription));
+                alert('Share this Answer SDP with your friend:\n' + JSON.stringify(localConnection.localDescription));
             } catch (err) {
                 elements.status.textContent = `Status: Error - ${err.message}`;
             }
@@ -263,9 +220,10 @@
         function setupDataChannel() {
             dataChannel.onopen = () => {
                 elements.status.textContent = 'Status: Connected';
+                elements.codeDisplay.textContent += ' - Chatting!';
             };
             dataChannel.onmessage = (event) => {
-                addMessage(`Friend: ${event.data}`, currentCode);
+                addMessage(`Friend: ${event.data}`);
             };
             dataChannel.onclose = () => {
                 elements.status.textContent = 'Status: Disconnected';
@@ -276,43 +234,13 @@
             };
         }
 
-        // Collect ICE candidates
-        function collectIceCandidates() {
-            localConnection.onicecandidate = (event) => {
-                if (event.candidate) {
-                    if (!storedSessions[currentCode]) storedSessions[currentCode] = { sdp: null, candidates: [], answer: null, messages: [] };
-                    storedSessions[currentCode].candidates.push(event.candidate);
-                    elements.codeDisplay.textContent += `\nICE Candidate: ${JSON.stringify(event.candidate)}`;
-                }
-            };
-        }
-
         // Add message to the chat
-        function addMessage(text, peerId) {
+        function addMessage(text) {
             const msg = document.createElement('div');
             msg.className = 'message';
             msg.textContent = text;
             elements.messages.appendChild(msg);
             elements.messages.scrollTop = elements.messages.scrollHeight;
-            saveMessage(peerId, text);
-        }
-
-        // Save message to local storage
-        function saveMessage(peerId, text) {
-            if (!storedSessions[peerId]) storedSessions[peerId] = { sdp: null, candidates: [], answer: null, messages: [] };
-            if (!storedSessions[peerId].messages) storedSessions[peerId].messages = [];
-            storedSessions[peerId].messages.push({ text, timestamp: Date.now() });
-            localStorage.setItem('chatSessions', JSON.stringify(storedSessions));
-        }
-
-        // Load chat history
-        function loadChatHistory(peerId) {
-            if (storedSessions[peerId] && storedSessions[peerId].messages) {
-                elements.messages.innerHTML = '';
-                storedSessions[peerId].messages.forEach(msg => {
-                    addMessage(msg.text, peerId);
-                });
-            }
         }
 
         // Event Listeners
@@ -328,20 +256,6 @@
             joinChat(code);
         };
 
-        elements.addCandidatesBtn.onclick = () => {
-            const candidates = elements.candidateInput.value.split('\n')
-                .map(line => line.trim())
-                .filter(line => line)
-                .map(line => JSON.parse(line.replace('Your ICE Candidate: ', '')));
-            candidates.forEach(candidate => {
-                localConnection.addIceCandidate(candidate).catch(err => {
-                    elements.status.textContent = `Status: Candidate Error - ${err.message}`;
-                });
-            });
-            elements.status.textContent = 'Status: Candidates added';
-            elements.candidateInput.value = '';
-        };
-
         elements.sendBtn.onclick = () => {
             const text = elements.messageInput.value.trim();
             if (!text || !dataChannel) {
@@ -349,7 +263,7 @@
                 return;
             }
             dataChannel.send(text);
-            addMessage(`You: ${text}`, currentCode);
+            addMessage(`You: ${text}`);
             elements.messageInput.value = '';
         };
 
