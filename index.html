@@ -3,147 +3,305 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quick Wrap | Instant P2P Chat</title>
-    <link rel="stylesheet" href="main.css">
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&display=swap" rel="stylesheet">
+    <title>Quick Wrap</title>
+    <style>
+        /* Futuristic Styling */
+        body {
+            margin: 0;
+            font-family: 'Exo 2', sans-serif;
+            background: linear-gradient(135deg, #1a1a3d, #2a0a4d);
+            color: #fff;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #intro {
+            text-align: center;
+            animation: fadeIn 1s ease-in;
+        }
+        #intro h1 {
+            font-size: 2.5em;
+            text-shadow: 0 0 10px #0ff, 0 0 20px #f0f;
+        }
+        #intro p {
+            font-size: 1.2em;
+            margin: 10px 0;
+        }
+        #enterBtn {
+            padding: 15px 30px;
+            font-size: 1.2em;
+            background: none;
+            border: 2px solid #0ff;
+            color: #0ff;
+            border-radius: 25px;
+            cursor: pointer;
+            animation: pulse 2s infinite;
+            transition: transform 0.2s;
+        }
+        #enterBtn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 20px #0ff;
+        }
+        #chatPage {
+            display: none;
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        #sidebar {
+            width: 20%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            float: left;
+            padding: 10px;
+        }
+        #chatWindow {
+            width: 80%;
+            height: 100%;
+            float: right;
+            background: rgba(10, 10, 20, 0.9);
+            padding: 20px;
+            overflow-y: auto;
+        }
+        #messageInput {
+            width: 70%;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: #fff;
+            border-radius: 5px;
+        }
+        #sendBtn, #codeBtn, #joinBtn {
+            padding: 10px;
+            background: #0ff;
+            border: none;
+            color: #000;
+            cursor: pointer;
+            border-radius: 5px;
+            margin: 5px;
+        }
+        .message {
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            animation: slideIn 0.3s ease;
+        }
+        #paymentModal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border: 2px solid #0ff;
+            border-radius: 10px;
+            text-align: center;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 5px #0ff; }
+            50% { box-shadow: 0 0 20px #0ff; }
+            100% { box-shadow: 0 0 5px #0ff; }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes slideIn {
+            from { transform: translateX(-20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @media (max-width: 768px) {
+            #sidebar { width: 100%; height: 20%; float: none; }
+            #chatWindow { width: 100%; height: 80%; float: none; }
+        }
+    </style>
 </head>
 <body>
-    <!-- Intro Page Section -->
-    <div id="intro-page" class="active">
-        <div class="particle-container" id="particles"></div>
-        <div class="intro-content">
-            <h1 class="glow-text">Quick Wrap</h1>
-            <p class="subtitle">Instant, Private, Peer-to-Peer Chat</p>
-            <p class="description">Generate a code. Connect with friends. No servers, just you and them.</p>
-            <button id="enter-chat-btn" class="pulse-btn">Tap to Enter Chat</button>
-        </div>
-        <footer class="intro-footer">
-            <span>Powered by xAI</span>
-            <div class="footer-links">
-                <a href="#about">About</a>
-                <a href="#support">Support</a>
-            </div>
-        </footer>
+    <!-- Intro Page -->
+    <div id="intro">
+        <h1>Quick Wrap: Peer-to-Peer Chat</h1>
+        <p>Generate a code. Connect instantly. No servers needed.</p>
+        <button id="enterBtn">Tap to Start Chatting</button>
     </div>
 
-    <!-- Payment Modal (appears for new users) -->
-    <div id="payment-modal" class="modal">
-        <div class="modal-content">
-            <h2>Unlock Quick Wrap Premium</h2>
-            <div class="price-container">
-                <span class="price">$1</span>
-                <span class="price-description">one-time payment</span>
-            </div>
-            <div class="payment-options">
-                <button id="stripe-payment" class="payment-btn">Pay with Card</button>
-                <button id="crypto-payment" class="payment-btn">Pay with Crypto</button>
-            </div>
-            <div id="payment-details" class="hidden">
-                <!-- Placeholder for Stripe form or crypto QR -->
-            </div>
-            <button id="continue-free" class="text-btn">Continue with Free Version</button>
+    <!-- Chat Interface -->
+    <div id="chatPage">
+        <div id="sidebar">
+            <button id="codeBtn">Generate Code</button>
+            <input id="codeInput" placeholder="Enter Code" maxlength="6">
+            <button id="joinBtn">Join Chat</button>
+            <p id="codeDisplay"></p>
+        </div>
+        <div id="chatWindow">
+            <div id="messages"></div>
+            <input id="messageInput" placeholder="Type a message...">
+            <button id="sendBtn">Send</button>
         </div>
     </div>
 
-    <!-- Main Chat Section -->
-    <div id="chat-page" class="hidden">
-        <div class="sidebar">
-            <div class="logo-container">
-                <h2 class="logo">QW</h2>
-            </div>
-            <div class="code-actions">
-                <button id="generate-code-btn" class="action-btn">Generate Code</button>
-                <button id="join-code-btn" class="action-btn">Join with Code</button>
-            </div>
-            <div class="chat-list-container">
-                <h3>Active Chats</h3>
-                <ul id="chat-list"></ul>
-            </div>
-            <div class="user-settings">
-                <button id="settings-btn" class="icon-btn">⚙️</button>
-                <div id="premium-badge" class="hidden">PRO</div>
-            </div>
-        </div>
-
-        <div class="main-chat">
-            <div id="empty-state" class="empty-state">
-                <h2>No active chat</h2>
-                <p>Generate a code to share with friends or join with a code</p>
-            </div>
-            
-            <div id="active-chat" class="hidden">
-                <div class="chat-header">
-                    <h3 id="chat-code">Code: <span></span></h3>
-                    <div class="chat-actions">
-                        <button id="copy-code-btn" class="icon-btn">📋</button>
-                        <button id="close-chat-btn" class="icon-btn">✖️</button>
-                    </div>
-                </div>
-                
-                <div id="messages-container" class="messages-container">
-                    <!-- Messages will be added here dynamically -->
-                </div>
-                
-                <div class="message-input">
-                    <input type="text" id="message-input" placeholder="Type your message...">
-                    <button id="send-btn">Send</button>
-                </div>
-            </div>
-        </div>
-        
-        <div class="premium-panel">
-            <h3>Premium Features</h3>
-            <div id="premium-features" class="features-list">
-                <div class="feature locked">
-                    <span>Custom Themes</span>
-                    <span class="lock-icon">🔒</span>
-                </div>
-                <div class="feature locked">
-                    <span>Voice Messages</span>
-                    <span class="lock-icon">🔒</span>
-                </div>
-                <div class="feature locked">
-                    <span>File Sharing</span>
-                    <span class="lock-icon">🔒</span>
-                </div>
-                <div class="feature locked">
-                    <span>Group Chats</span>
-                    <span class="lock-icon">🔒</span>
-                </div>
-                <div class="feature locked">
-                    <span>Disappearing Messages</span>
-                    <span class="lock-icon">🔒</span>
-                </div>
-            </div>
-            <button id="upgrade-btn" class="upgrade-btn hidden">Upgrade Now</button>
-        </div>
+    <!-- Payment Modal -->
+    <div id="paymentModal">
+        <h2>Unlock Premium for $1!</h2>
+        <p>Unlimited messages & more.</p>
+        <button id="stripeBtn">Pay with Card</button>
+        <button id="cryptoBtn">Pay with Crypto</button>
     </div>
 
-    <!-- Code Join Modal -->
-    <div id="code-modal" class="modal hidden">
-        <div class="modal-content">
-            <h2 id="modal-title">Join with Code</h2>
-            <div id="code-display" class="code-display hidden">
-                <h3>Your code is:</h3>
-                <div id="generated-code" class="generated-code"></div>
-                <p>Share this code with a friend to connect</p>
-                <button id="copy-generated-code" class="action-btn">Copy Code</button>
-            </div>
-            <div id="code-input-container">
-                <input type="text" id="code-input" maxlength="6" placeholder="Enter 6-digit code">
-                <button id="submit-code-btn" class="action-btn">Connect</button>
-            </div>
-            <button id="close-modal-btn" class="text-btn">Cancel</button>
-        </div>
-    </div>
-
-    <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://js.stripe.com/v3/"></script>
-    <script src="main.js"></script>
-    <script src="webrtc.js"></script>
-    <script src="payment.js"></script>
-    <script src="ip-recognition.js"></script>
-    <script src="ui-effects.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.7.0/dist/web3.min.js"></script>
+    <script>
+        // Core Variables
+        const peer = new Peer();
+        let conn = null;
+        let messageCount = 0;
+        const MAX_FREE_MESSAGES = 50;
+        let isPremium = false;
+        const stripe = Stripe('pk_test_YOUR_STRIPE_PUBLIC_KEY'); // Replace with your Stripe key
+
+        // DOM Elements
+        const intro = document.getElementById('intro');
+        const chatPage = document.getElementById('chatPage');
+        const enterBtn = document.getElementById('enterBtn');
+        const codeBtn = document.getElementById('codeBtn');
+        const joinBtn = document.getElementById('joinBtn');
+        const codeInput = document.getElementById('codeInput');
+        const codeDisplay = document.getElementById('codeDisplay');
+        const messages = document.getElementById('messages');
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const paymentModal = document.getElementById('paymentModal');
+        const stripeBtn = document.getElementById('stripeBtn');
+        const cryptoBtn = document.getElementById('cryptoBtn');
+
+        // IP Hashing for Tier Check (Client-Side)
+        function hashIP() {
+            return fetch('https://api.ipify.org?format=json')
+                .then(res => res.json())
+                .then(data => {
+                    const ip = data.ip;
+                    return sha256(ip); // Simple hash function below
+                });
+        }
+        async function sha256(message) {
+            const msgBuffer = new TextEncoder().encode(message);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+        function checkPremium() {
+            const premiumKey = localStorage.getItem('premiumKey');
+            if (premiumKey) {
+                isPremium = true;
+                paymentModal.style.display = 'none';
+            } else {
+                hashIP().then(hash => {
+                    if (!localStorage.getItem(hash)) {
+                        paymentModal.style.display = 'block';
+                    }
+                });
+            }
+        }
+
+        // WebRTC Setup
+        peer.on('open', (id) => {
+            console.log('Peer ID:', id);
+        });
+        peer.on('connection', (connection) => {
+            conn = connection;
+            setupConnection();
+        });
+
+        function setupConnection() {
+            conn.on('data', (data) => {
+                addMessage(`Friend: ${data}`);
+            });
+        }
+
+        function generateCode() {
+            const code = Math.floor(100000 + Math.random() * 900000).toString();
+            codeDisplay.textContent = `Your Code: ${code}`;
+            return code;
+        }
+
+        function joinChat(code) {
+            conn = peer.connect(code);
+            conn.on('open', () => {
+                setupConnection();
+            });
+        }
+
+        function addMessage(text) {
+            const msg = document.createElement('div');
+            msg.className = 'message';
+            msg.textContent = text;
+            messages.appendChild(msg);
+            messages.scrollTop = messages.scrollHeight;
+        }
+
+        // Event Listeners
+        enterBtn.onclick = () => {
+            intro.style.display = 'none';
+            chatPage.style.display = 'block';
+            checkPremium();
+        };
+
+        codeBtn.onclick = () => {
+            const code = generateCode();
+        };
+
+        joinBtn.onclick = () => {
+            const code = codeInput.value;
+            if (code.length === 6) joinChat(code);
+        };
+
+        sendBtn.onclick = () => {
+            const text = messageInput.value;
+            if (!text) return;
+            if (!isPremium && messageCount >= MAX_FREE_MESSAGES) {
+                alert('Free tier limit reached (50 messages). Upgrade to Premium!');
+                return;
+            }
+            if (conn) {
+                conn.send(text);
+                addMessage(`You: ${text}`);
+                messageCount++;
+            }
+            messageInput.value = '';
+        };
+
+        // Payment Handling
+        stripeBtn.onclick = () => {
+            // Mock Stripe checkout (replace with real integration)
+            hashIP().then(hash => {
+                localStorage.setItem(hash, 'premium');
+                localStorage.setItem('premiumKey', 'mockKey');
+                isPremium = true;
+                paymentModal.style.display = 'none';
+                alert('Premium unlocked (mock)!');
+            });
+        };
+
+        cryptoBtn.onclick = () => {
+            // Mock Crypto payment (replace with Web3.js integration)
+            if (typeof window.ethereum !== 'undefined') {
+                hashIP().then(hash => {
+                    localStorage.setItem(hash, 'premium');
+                    localStorage.setItem('premiumKey', 'mockKey');
+                    isPremium = true;
+                    paymentModal.style.display = 'none';
+                    alert('Premium unlocked (mock crypto)!');
+                });
+            } else {
+                alert('Please install MetaMask for crypto payments.');
+            }
+        };
+    </script>
 </body>
 </html>
