@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quick Wrap - Pure P2P Chat</title>
+    <title>Quick Wrap - Epic P2P Chat</title>
     <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;700&display=swap" rel="stylesheet">
     <style>
         body {
@@ -11,11 +11,16 @@
             font-family: 'Exo 2', sans-serif;
             background: linear-gradient(135deg, #1a1a3d, #2a0a4d);
             color: #fff;
-            overflow: hidden;
             height: 100vh;
+            overflow: hidden;
             display: flex;
             justify-content: center;
             align-items: center;
+            animation: bgPulse 10s infinite alternate;
+        }
+        @keyframes bgPulse {
+            from { filter: brightness(1); }
+            to { filter: brightness(1.2); }
         }
         #intro {
             text-align: center;
@@ -23,7 +28,8 @@
         }
         #intro h1 {
             font-size: clamp(1.5rem, 5vw, 2.5rem);
-            text-shadow: 0 0 10px #0ff, 0 0 20px #f0f;
+            text-shadow: 0 0 15px #0ff, 0 0 30px #f0f;
+            color: #0ff;
         }
         #chatPage {
             display: none;
@@ -32,45 +38,54 @@
             position: fixed;
             top: 0;
             left: 0;
+            transition: opacity 0.5s;
         }
+        #chatPage.active { display: block; opacity: 1; }
         #sidebar {
             width: 100%;
-            height: 30%;
-            background: rgba(0, 0, 0, 0.8);
-            padding: 15px;
+            height: 35%;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 20px;
             box-sizing: border-box;
-            overflow-x: auto;
+            overflow-y: auto;
+            border-right: 2px solid #0ff;
         }
         #chatWindow {
             width: 100%;
-            height: 70%;
+            height: 65%;
             background: rgba(10, 10, 20, 0.95);
             padding: 20px;
             overflow-y: auto;
             box-sizing: border-box;
+            border-top: 2px solid #0ff;
         }
         #messageInput {
             width: 70%;
             padding: 12px;
-            background: rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.2);
             border: 1px solid #0ff;
             color: #fff;
             border-radius: 5px;
             margin-right: 10px;
+            transition: box-shadow 0.3s;
         }
+        #messageInput:focus { box-shadow: 0 0 10px #0ff; }
         #messages {
             min-height: 80%;
+            margin-bottom: 10px;
         }
         .message {
             margin: 10px 0;
             padding: 12px;
-            background: rgba(255, 255, 255, 0.25);
+            background: rgba(255, 255, 255, 0.3);
             border-radius: 8px;
             animation: slideIn 0.3s ease;
             word-wrap: break-word;
+            border-left: 4px solid #0ff;
         }
+        .message.you { background: rgba(0, 255, 255, 0.3); text-align: right; }
         button {
-            padding: 10px 20px;
+            padding: 12px 25px;
             background: #0ff;
             border: none;
             color: #000;
@@ -78,42 +93,45 @@
             border-radius: 5px;
             font-weight: 700;
             transition: transform 0.2s, box-shadow 0.2s;
-            margin: 5px;
+            margin: 5px 0;
         }
         button:hover {
-            transform: scale(1.05);
-            box-shadow: 0 0 15px #0ff;
+            transform: scale(1.1);
+            box-shadow: 0 0 20px #0ff;
         }
-        #codeInput {
+        #codeInput, #candidateInput {
             width: 70%;
             padding: 12px;
-            background: rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.2);
             border: 1px solid #0ff;
             color: #fff;
             border-radius: 5px;
             margin: 5px 0;
+            resize: vertical;
         }
+        #candidateInput { height: 100px; }
         #codeDisplay {
             margin: 10px 0;
             font-size: 1rem;
             color: #0ff;
             word-break: break-all;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
         }
         #status {
             margin: 10px 0;
             font-size: 1rem;
+            color: #fff;
+            background: rgba(255, 0, 0, 0.3);
+            padding: 5px;
+            border-radius: 3px;
+            transition: background 0.5s;
         }
+        #status.connected { background: rgba(0, 255, 0, 0.3); }
         @media (min-width: 769px) {
-            #sidebar {
-                width: 25%;
-                height: 100%;
-                float: left;
-            }
-            #chatWindow {
-                width: 75%;
-                height: 100%;
-                float: right;
-            }
+            #sidebar { width: 25%; height: 100%; float: left; }
+            #chatWindow { width: 75%; height: 100%; float: right; }
         }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideIn { from { transform: translateX(-20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
@@ -121,22 +139,24 @@
 </head>
 <body>
     <div id="intro">
-        <h1>Quick Wrap: Pure P2P Chat</h1>
-        <p>Generate a code, share it manually, and chat</p>
-        <button id="enterBtn">Start Chatting</button>
+        <h1>Quick Wrap: Epic P2P Chat</h1>
+        <p>Generate a code, share it, and chat with style!</p>
+        <button id="enterBtn">Dive In</button>
     </div>
 
     <div id="chatPage">
         <div id="sidebar">
-            <button id="codeBtn">Generate Code</button>
-            <input id="codeInput" placeholder="Enter Friend's Code" maxlength="1000">
+            <button id="codeBtn">Generate Epic Code</button>
+            <input id="codeInput" placeholder="Enter Friend's Code" maxlength="10">
             <button id="joinBtn">Join Chat</button>
-            <p id="codeDisplay"></p>
-            <p id="status">Status: Disconnected</p>
+            <textarea id="candidateInput" placeholder="Paste friend's ICE candidates here" rows="4"></textarea>
+            <button id="addCandidatesBtn">Add Candidates</button>
+            <div id="codeDisplay"></div>
+            <div id="status">Status: Disconnected</div>
         </div>
         <div id="chatWindow">
             <div id="messages"></div>
-            <input id="messageInput" placeholder="Type a message...">
+            <input id="messageInput" placeholder="Type an epic message...">
             <button id="sendBtn">Send</button>
         </div>
     </div>
@@ -154,6 +174,8 @@
             codeBtn: document.getElementById('codeBtn'),
             joinBtn: document.getElementById('joinBtn'),
             codeInput: document.getElementById('codeInput'),
+            candidateInput: document.getElementById('candidateInput'),
+            addCandidatesBtn: document.getElementById('addCandidatesBtn'),
             codeDisplay: document.getElementById('codeDisplay'),
             messages: document.getElementById('messages'),
             messageInput: document.getElementById('messageInput'),
@@ -161,19 +183,22 @@
             status: document.getElementById('status')
         };
 
-        // Create RTCPeerConnection
         function createPeerConnection() {
             const configuration = {
-                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' }
+                ]
             };
             return new RTCPeerConnection(configuration);
         }
 
-        // Generate and display connection code
+        function generateShortCode(length = 6) {
+            return Math.random().toString(36).substring(2, 2 + length).toUpperCase();
+        }
+
         async function generateCode() {
-            if (localConnection) {
-                localConnection.close();
-            }
+            if (localConnection) localConnection.close();
             localConnection = createPeerConnection();
             dataChannel = localConnection.createDataChannel('chat');
             setupDataChannel();
@@ -181,28 +206,28 @@
             try {
                 const offer = await localConnection.createOffer();
                 await localConnection.setLocalDescription(offer);
-                const code = JSON.stringify({
+                currentCode = generateShortCode();
+                storedMessages[currentCode] = {
                     sdp: localConnection.localDescription,
-                    timestamp: Date.now()
-                });
-                currentCode = code;
-                elements.codeDisplay.textContent = `Your Code: ${code}`;
-                elements.status.textContent = 'Status: Ready - Share this code with your friend';
+                    candidates: [],
+                    answer: null
+                };
+                elements.codeDisplay.textContent = `Your Epic Code: ${currentCode}\nShare this with your friend!`;
+                updateStatus('Ready - Copy the code and ICE candidates below');
                 collectIceCandidates();
             } catch (err) {
-                elements.status.textContent = `Status: Error - ${err.message}`;
+                updateStatus(`Error: ${err.message}`);
             }
         }
 
-        // Join with a friend's code
         async function joinChat(code) {
-            if (!code || localConnection) {
-                elements.status.textContent = 'Status: Invalid code or already connected';
+            if (!code || localConnection || !storedMessages[code]) {
+                updateStatus('Invalid code or already connected');
                 return;
             }
 
             try {
-                const parsedCode = JSON.parse(code);
+                const peerData = storedMessages[code];
                 localConnection = createPeerConnection();
                 localConnection.ondatachannel = (event) => {
                     dataChannel = event.channel;
@@ -211,53 +236,47 @@
 
                 localConnection.onicecandidate = (event) => {
                     if (event.candidate) {
-                        // No server to send candidates, handled manually
+                        storedMessages[currentCode].candidates.push(event.candidate);
+                        elements.codeDisplay.textContent += `\nYour ICE Candidate: ${JSON.stringify(event.candidate)}`;
                     }
                 };
 
-                await localConnection.setRemoteDescription(parsedCode.sdp);
+                await localConnection.setRemoteDescription(peerData.sdp);
                 const answer = await localConnection.createAnswer();
                 await localConnection.setLocalDescription(answer);
-
-                elements.status.textContent = 'Status: Connected - Send this answer to your friend';
-                currentCode = JSON.stringify({
-                    sdp: localConnection.localDescription,
-                    timestamp: Date.now()
+                storedMessages[code].answer = localConnection.localDescription;
+                peerData.candidates.forEach(candidate => {
+                    localConnection.addIceCandidate(candidate).catch(err => console.error(err));
                 });
-                elements.codeDisplay.textContent = `Your Answer: ${currentCode}`;
-                collectIceCandidates();
+
+                elements.codeDisplay.textContent = `Your Answer: ${JSON.stringify(storedMessages[code].answer)}\nShare this with your friend!`;
+                updateStatus('Connected - Share your answer and add their candidates');
+                loadChatHistory(code);
             } catch (err) {
-                elements.status.textContent = `Status: Error - ${err.message}`;
+                updateStatus(`Error: ${err.message}`);
             }
         }
 
-        // Setup data channel for messaging
         function setupDataChannel() {
-            dataChannel.onopen = () => {
-                elements.status.textContent = 'Status: Connected';
-            };
-            dataChannel.onmessage = (event) => {
-                addMessage(`Friend: ${event.data}`, currentCode);
-            };
-            dataChannel.onclose = () => {
-                elements.status.textContent = 'Status: Disconnected';
-                dataChannel = null;
-            };
+            dataChannel.onopen = () => updateStatus('Connected', true);
+            dataChannel.onmessage = (event) => addMessage(`Friend: ${event.data}`, currentCode);
+            dataChannel.onclose = () => updateStatus('Disconnected');
+            dataChannel.onerror = (err) => updateStatus(`Error: ${err.message}`);
         }
 
-        // Collect ICE candidates (manual exchange needed)
         function collectIceCandidates() {
             localConnection.onicecandidate = (event) => {
                 if (event.candidate) {
-                    console.log('New ICE candidate:', event.candidate);
-                    // In a serverless setup, you'd need to manually share this with the other peer
+                    if (!storedMessages[currentCode]) storedMessages[currentCode] = { sdp: null, candidates: [], answer: null };
+                    storedMessages[currentCode].candidates.push(event.candidate);
+                    elements.codeDisplay.textContent += `\nICE Candidate: ${JSON.stringify(event.candidate)}`;
                 }
             };
         }
 
         function addMessage(text, peerId = currentCode) {
             const msg = document.createElement('div');
-            msg.className = 'message';
+            msg.className = 'message' + (text.startsWith('You:') ? ' you' : '');
             msg.textContent = text;
             elements.messages.appendChild(msg);
             elements.messages.scrollTop = elements.messages.scrollHeight;
@@ -265,24 +284,28 @@
         }
 
         function saveMessage(peerId, text) {
-            if (!storedMessages[peerId]) storedMessages[peerId] = [];
-            storedMessages[peerId].push({ text, timestamp: Date.now() });
+            if (!storedMessages[peerId]) storedMessages[peerId] = { messages: [], sdp: null, candidates: [], answer: null };
+            if (!storedMessages[peerId].messages) storedMessages[peerId].messages = [];
+            storedMessages[peerId].messages.push({ text, timestamp: Date.now() });
             localStorage.setItem('chatHistory', JSON.stringify(storedMessages));
         }
 
         function loadChatHistory(peerId) {
-            if (storedMessages[peerId]) {
+            if (storedMessages[peerId] && storedMessages[peerId].messages) {
                 elements.messages.innerHTML = '';
-                storedMessages[peerId].forEach(msg => {
-                    addMessage(msg.text, peerId);
-                });
+                storedMessages[peerId].messages.forEach(msg => addMessage(msg.text, peerId));
             }
+        }
+
+        function updateStatus(message, connected = false) {
+            elements.status.textContent = `Status: ${message}`;
+            elements.status.className = connected ? 'connected' : '';
         }
 
         // Event Listeners
         elements.enterBtn.onclick = () => {
             elements.intro.style.display = 'none';
-            elements.chatPage.style.display = 'block';
+            elements.chatPage.classList.add('active');
         };
 
         elements.codeBtn.onclick = () => generateCode();
@@ -292,15 +315,34 @@
             joinChat(code);
         };
 
+        elements.addCandidatesBtn.onclick = () => {
+            const candidates = elements.candidateInput.value.split('\n')
+                .map(line => line.trim())
+                .filter(line => line)
+                .map(line => JSON.parse(line.replace('Your ICE Candidate: ', '')));
+            candidates.forEach(candidate => {
+                localConnection.addIceCandidate(candidate).catch(err => {
+                    updateStatus(`Candidate Error: ${err.message}`);
+                });
+            });
+            updateStatus('Candidates added');
+            elements.candidateInput.value = '';
+        };
+
         elements.sendBtn.onclick = () => {
             const text = elements.messageInput.value.trim();
             if (!text || !dataChannel) {
-                if (!dataChannel) elements.status.textContent = 'Status: Not connected';
+                updateStatus(!dataChannel ? 'Not connected' : 'Empty message');
                 return;
             }
             dataChannel.send(text);
             addMessage(`You: ${text}`);
             elements.messageInput.value = '';
+        };
+
+        // Cleanup on page unload
+        window.onbeforeunload = () => {
+            if (localConnection) localConnection.close();
         };
     </script>
 </body>
