@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Quick Wrap - Serverless P2P Chat</title>
+    <title>Quick Wrap - Simple P2P Chat</title>
     <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;700&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/simple-peer@9.11.1/simplepeer.min.js"></script>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         body {
             margin: 0;
@@ -38,7 +38,7 @@
         }
         #sidebar {
             width: 100%;
-            height: 40%;
+            height: 30%;
             background: rgba(0, 0, 0, 0.8);
             padding: 15px;
             box-sizing: border-box;
@@ -47,7 +47,7 @@
         }
         #chatWindow {
             width: 100%;
-            height: 60%;
+            height: 70%;
             background: rgba(10, 10, 20, 0.95);
             padding: 20px;
             overflow-y: auto;
@@ -89,7 +89,7 @@
             transform: scale(1.05);
             box-shadow: 0 0 15px #0ff;
         }
-        #codeInput, #signalInput {
+        #codeInput {
             width: 70%;
             padding: 12px;
             background: rgba(255, 255, 255, 0.15);
@@ -98,18 +98,6 @@
             border-radius: 5px;
             margin: 5px 0;
             font-size: 1rem;
-        }
-        #signalOutput {
-            width: 70%;
-            padding: 12px;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid #f0f;
-            color: #fff;
-            border-radius: 5px;
-            margin: 5px 0;
-            font-size: 0.9rem;
-            word-wrap: break-word;
-            cursor: pointer;
         }
         #codeDisplay, #status {
             margin: 10px 0;
@@ -139,7 +127,7 @@
 </head>
 <body>
     <div id="intro">
-        <h1>Quick Wrap: Serverless P2P Chat</h1>
+        <h1>Quick Wrap: Simple P2P Chat</h1>
         <p>Generate a code, share it, and chat!</p>
         <button id="enterBtn">Start Chatting</button>
     </div>
@@ -151,9 +139,6 @@
             <button id="joinBtn">Join Chat</button>
             <p id="codeDisplay"></p>
             <p id="status">Status: Disconnected</p>
-            <textarea id="signalOutput" placeholder="Your signal data will appear here. Copy and send to your friend." readonly></textarea>
-            <input id="signalInput" placeholder="Paste your friend's signal data here">
-            <button id="signalBtn">Submit Signal Data</button>
         </div>
         <div id="chatWindow">
             <div id="messages"></div>
@@ -164,6 +149,7 @@
 
     <script>
         let peer = null;
+        let conn = null;
         let currentCode = null;
         let isInitiator = false;
 
@@ -178,10 +164,7 @@
             messages: document.getElementById('messages'),
             messageInput: document.getElementById('messageInput'),
             sendBtn: document.getElementById('sendBtn'),
-            status: document.getElementById('status'),
-            signalOutput: document.getElementById('signalOutput'),
-            signalInput: document.getElementById('signalInput'),
-            signalBtn: document.getElementById('signalBtn')
+            status: document.getElementById('status')
         };
 
         // Generate a 5-digit numeric code
@@ -189,11 +172,12 @@
             return Math.floor(10000 + Math.random() * 90000).toString();
         }
 
-        // Create a new SimplePeer instance
-        function createPeer(initiator) {
-            peer = new SimplePeer({
-                initiator: initiator,
-                trickle: false,
+        // Setup PeerJS connection
+        function setupPeer(id, initiator) {
+            peer = new Peer(id, {
+                host: 'peerjs-server.herokuapp.com', // Free PeerJS signaling server
+                secure: true,
+                port: 443,
                 config: {
                     iceServers: [
                         { urls: 'stun:stun.l.google.com:19302' },
@@ -211,42 +195,53 @@
                 }
             });
 
-            // Handle signaling data
-            peer.on('signal', (data) => {
-                elements.signalOutput.value = JSON.stringify(data);
+            peer.on('open', () => {
                 elements.status.textContent = initiator
-                    ? 'Status: Copy the signal data above and send to your friend.'
-                    : 'Status: Waiting for your friend’s signal data...';
+                    ? 'Status: Waiting for friend...'
+                    : 'Status: Connecting...';
             });
 
-            // Handle connection
-            peer.on('connect', () => {
-                document.body.classList.add('connected');
-                elements.status.textContent = 'Status: Connected - Let’s Chat!';
-                elements.status.style.animation = 'pulse 1s infinite';
-                addMessage('System: Connected! Start texting your friend.');
-                elements.signalOutput.value = '';
-                elements.signalInput.value = '';
+            peer.on('connection', (connection) => {
+                conn = connection;
+                setupConnection();
             });
 
-            // Handle incoming messages
-            peer.on('data', (data) => {
-                addMessage(`Friend: ${data}`);
-            });
-
-            // Handle errors
             peer.on('error', (err) => {
                 elements.status.textContent = `Status: Error - ${err.message}`;
                 console.error('Peer error:', err);
                 cleanup();
             });
 
-            // Handle connection close
-            peer.on('close', () => {
+            peer.on('disconnected', () => {
+                elements.status.textContent = 'Status: Disconnected from signaling server';
+                cleanup();
+            });
+        }
+
+        // Setup the data connection
+        function setupConnection() {
+            conn.on('open', () => {
+                document.body.classList.add('connected');
+                elements.status.textContent = 'Status: Connected - Let’s Chat!';
+                elements.status.style.animation = 'pulse 1s infinite';
+                addMessage('System: Connected! Start texting your friend.');
+            });
+
+            conn.on('data', (data) => {
+                addMessage(`Friend: ${data}`);
+            });
+
+            conn.on('close', () => {
                 document.body.classList.remove('connected');
                 elements.status.textContent = 'Status: Disconnected';
                 elements.status.style.animation = 'none';
                 addMessage('System: Connection lost.');
+                cleanup();
+            });
+
+            conn.on('error', (err) => {
+                elements.status.textContent = `Status: Connection error - ${err.message}`;
+                console.error('Connection error:', err);
                 cleanup();
             });
         }
@@ -262,6 +257,10 @@
 
         // Cleanup function to reset connection
         function cleanup() {
+            if (conn) {
+                conn.close();
+                conn = null;
+            }
             if (peer) {
                 peer.destroy();
                 peer = null;
@@ -271,8 +270,6 @@
             document.body.classList.remove('connected');
             elements.status.style.animation = 'none';
             elements.codeDisplay.textContent = '';
-            elements.signalOutput.value = '';
-            elements.signalInput.value = '';
         }
 
         // Event Listeners
@@ -286,8 +283,7 @@
             isInitiator = true;
             currentCode = generateShortCode();
             elements.codeDisplay.textContent = `Your Code: ${currentCode}`;
-            elements.status.textContent = 'Status: Generating signal data...';
-            createPeer(true);
+            setupPeer(currentCode, true);
         };
 
         elements.joinBtn.onclick = () => {
@@ -305,42 +301,20 @@
             isInitiator = false;
             currentCode = code;
             elements.codeDisplay.textContent = `Connecting to: ${code}`;
-            elements.status.textContent = 'Status: Generating signal data...';
-            createPeer(false);
-        };
-
-        elements.signalBtn.onclick = () => {
-            const signalData = elements.signalInput.value.trim();
-            if (!signalData || !peer) {
-                elements.status.textContent = 'Status: No signal data or peer not initialized';
-                return;
-            }
-            try {
-                peer.signal(JSON.parse(signalData));
-                elements.status.textContent = 'Status: Processing signal data...';
-            } catch (err) {
-                elements.status.textContent = `Status: Invalid signal data - ${err.message}`;
-                console.error('Signal error:', err);
-            }
+            setupPeer('responder-' + Date.now(), false); // Unique ID for responder
+            conn = peer.connect(code); // Connect to the initiator's code
+            setupConnection();
         };
 
         elements.sendBtn.onclick = () => {
             const text = elements.messageInput.value.trim();
-            if (!text || !peer) {
+            if (!text || !conn) {
                 elements.status.textContent = 'Status: Not connected or empty message';
                 return;
             }
-            peer.send(text);
+            conn.send(text);
             addMessage(`You: ${text}`);
             elements.messageInput.value = '';
-        };
-
-        // Copy signal data to clipboard on click
-        elements.signalOutput.onclick = () => {
-            if (elements.signalOutput.value) {
-                navigator.clipboard.writeText(elements.signalOutput.value);
-                elements.status.textContent = 'Status: Signal data copied to clipboard!';
-            }
         };
 
         window.onbeforeunload = cleanup;
