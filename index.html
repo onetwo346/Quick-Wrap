@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Quick Wrap - Pure P2P Chat</title>
     <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.1/socket.io.min.js"></script>
     <style>
         body {
             margin: 0;
@@ -140,6 +141,7 @@
     </div>
 
     <script>
+        const socket = io('https://simple-webrtc-signaling.herokuapp.com'); // Free public signaling server
         let localConnection = null;
         let dataChannel = null;
         let currentCode = null;
@@ -186,24 +188,37 @@
             return Math.floor(10000 + Math.random() * 90000).toString();
         }
 
-        // Handle ICE candidates and signaling via console (temporary bridge)
-        function setupSignaling(connection, code, isInitiator) {
+        // Setup signaling with Socket.IO
+        function setupSignaling(connection, code) {
             connection.onicecandidate = (event) => {
                 if (event.candidate) {
-                    console.log(`ICE Candidate for ${code}:`, JSON.stringify(event.candidate));
+                    socket.emit('message', { code, data: { type: 'candidate', candidate: event.candidate } });
                 }
             };
-            connection.onnegotiationneeded = async () => {
-                if (isInitiator) {
-                    try {
-                        const offer = await connection.createOffer();
-                        await connection.setLocalDescription(offer);
-                        console.log(`Offer SDP for ${code}:`, JSON.stringify(connection.localDescription));
-                    } catch (err) {
-                        elements.status.textContent = `Status: Error - ${err.message}`;
-                    }
+
+            socket.on('message', async (msg) => {
+                if (msg.code !== code) return;
+                const data = msg.data;
+                if (data.type === 'offer' && !isInitiator) {
+                    await connection.setRemoteDescription(new RTCSessionDescription(data));
+                    const answer = await connection.createAnswer();
+                    await connection.setLocalDescription(answer);
+                    socket.emit('message', { code, data: connection.localDescription });
+                    elements.status.textContent = 'Status: Connecting...';
+                } else if (data.type === 'answer' && isInitiator) {
+                    await connection.setRemoteDescription(new RTCSessionDescription(data));
+                } else if (data.type === 'candidate') {
+                    await connection.addIceCandidate(new RTCIceCandidate(data.candidate));
                 }
-            };
+            });
+
+            if (isInitiator) {
+                connection.onnegotiationneeded = async () => {
+                    const offer = await connection.createOffer();
+                    await connection.setLocalDescription(offer);
+                    socket.emit('message', { code, data: connection.localDescription });
+                };
+            }
         }
 
         // Generate code and start as initiator
@@ -217,7 +232,7 @@
             isInitiator = true;
             dataChannel = localConnection.createDataChannel('chat');
             setupDataChannel();
-            setupSignaling(localConnection, currentCode, true);
+            setupSignaling(localConnection, currentCode);
 
             currentCode = generateShortCode();
             elements.codeDisplay.textContent = `Your Code: ${currentCode}`;
@@ -238,26 +253,10 @@
                 dataChannel = event.channel;
                 setupDataChannel();
             };
-            setupSignaling(localConnection, code, false);
+            setupSignaling(localConnection, code);
 
             elements.codeDisplay.textContent = `Connecting to: ${code}`;
             elements.status.textContent = 'Status: Connecting...';
-
-            // Temporary manual SDP exchange (to be replaced with signaling server later)
-            const offerSDP = prompt(`Paste the Offer SDP for code ${code} from your friend's console:`);
-            if (!offerSDP) {
-                elements.status.textContent = 'Status: No SDP provided';
-                return;
-            }
-            try {
-                await localConnection.setRemoteDescription(JSON.parse(offerSDP));
-                const answer = await localConnection.createAnswer();
-                await localConnection.setLocalDescription(answer);
-                console.log(`Answer SDP for ${code}:`, JSON.stringify(localConnection.localDescription));
-                alert(`Share this Answer SDP with your friend:\n${JSON.stringify(localConnection.localDescription)}`);
-            } catch (err) {
-                elements.status.textContent = `Status: Error - ${err.message}`;
-            }
         }
 
         // Setup data channel for messaging
@@ -312,9 +311,10 @@
             elements.messageInput.value = '';
         };
 
-        // Prevent iPhone zoom and ensure cleanup
+        // Cleanup on page unload
         window.onbeforeunload = () => {
             if (localConnection) localConnection.close();
+            socket.disconnect();
         };
     </script>
 </body>
