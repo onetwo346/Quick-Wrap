@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quick Wrap</title>
     <style>
-        /* Futuristic Styling */
         body {
             margin: 0;
             font-family: 'Exo 2', sans-serif;
@@ -22,11 +21,11 @@
             animation: fadeIn 1s ease-in;
         }
         #intro h1 {
-            font-size: 2.5em;
+            font-size: clamp(1.5em, 5vw, 2.5em);
             text-shadow: 0 0 10px #0ff, 0 0 20px #f0f;
         }
         #intro p {
-            font-size: 1.2em;
+            font-size: clamp(1em, 3vw, 1.2em);
             margin: 10px 0;
         }
         #enterBtn {
@@ -51,21 +50,22 @@
             position: absolute;
             top: 0;
             left: 0;
+            box-sizing: border-box;
         }
         #sidebar {
             width: 20%;
             height: 100%;
             background: rgba(0, 0, 0, 0.7);
-            float: left;
             padding: 10px;
+            box-sizing: border-box;
         }
         #chatWindow {
             width: 80%;
             height: 100%;
-            float: right;
             background: rgba(10, 10, 20, 0.9);
             padding: 20px;
             overflow-y: auto;
+            box-sizing: border-box;
         }
         #messageInput {
             width: 70%;
@@ -102,6 +102,7 @@
             border: 2px solid #0ff;
             border-radius: 10px;
             text-align: center;
+            z-index: 1000;
         }
         @keyframes pulse {
             0% { box-shadow: 0 0 5px #0ff; }
@@ -117,20 +118,24 @@
             to { transform: translateX(0); opacity: 1; }
         }
         @media (max-width: 768px) {
-            #sidebar { width: 100%; height: 20%; float: none; }
-            #chatWindow { width: 100%; height: 80%; float: none; }
+            #sidebar { width: 100%; height: 25%; float: none; }
+            #chatWindow { width: 100%; height: 75%; float: none; }
+            #messageInput { width: 60%; }
+        }
+        @media (max-width: 480px) {
+            #sidebar { height: 30%; }
+            #chatWindow { height: 70%; }
+            #messageInput { width: 50%; }
         }
     </style>
 </head>
 <body>
-    <!-- Intro Page -->
     <div id="intro">
         <h1>Quick Wrap: Peer-to-Peer Chat</h1>
         <p>Generate a code. Connect instantly. No servers needed.</p>
         <button id="enterBtn">Tap to Start Chatting</button>
     </div>
 
-    <!-- Chat Interface -->
     <div id="chatPage">
         <div id="sidebar">
             <button id="codeBtn">Generate Code</button>
@@ -145,25 +150,24 @@
         </div>
     </div>
 
-    <!-- Payment Modal -->
     <div id="paymentModal">
         <h2>Unlock Premium for $1!</h2>
         <p>Unlimited messages & more.</p>
-        <button id="stripeBtn">Pay with Card</button>
-        <button id="cryptoBtn">Pay with Crypto</button>
+        <button id="stripeBtn">Pay with Stripe</button>
     </div>
 
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://js.stripe.com/v3/"></script>
-    <script src="https://cdn.jsdelivr.net/npm/web3@1.7.0/dist/web3.min.js"></script>
     <script>
+        // Initialize Stripe with your public key
+        const stripe = Stripe('pk_test_51O...'); // Replace with your actual Stripe public key
+
         // Core Variables
-        const peer = new Peer();
+        const peer = new Peer({ host: 'peerjs-server.herokuapp.com', secure: true, port: 443 });
         let conn = null;
         let messageCount = 0;
         const MAX_FREE_MESSAGES = 50;
         let isPremium = false;
-        const stripe = Stripe('pk_test_YOUR_STRIPE_PUBLIC_KEY'); // Replace with your Stripe key
 
         // DOM Elements
         const intro = document.getElementById('intro');
@@ -178,63 +182,16 @@
         const sendBtn = document.getElementById('sendBtn');
         const paymentModal = document.getElementById('paymentModal');
         const stripeBtn = document.getElementById('stripeBtn');
-        const cryptoBtn = document.getElementById('cryptoBtn');
 
-        // IP Hashing for Tier Check (Client-Side)
-        function hashIP() {
-            return fetch('https://api.ipify.org?format=json')
-                .then(res => res.json())
-                .then(data => {
-                    const ip = data.ip;
-                    return sha256(ip); // Simple hash function below
-                });
-        }
-        async function sha256(message) {
-            const msgBuffer = new TextEncoder().encode(message);
-            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-            const hashArray = Array.from(new Uint8Array(hashBuffer));
-            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        }
-        function checkPremium() {
+        // Utility Functions
+        async function checkPremium() {
             const premiumKey = localStorage.getItem('premiumKey');
             if (premiumKey) {
                 isPremium = true;
                 paymentModal.style.display = 'none';
             } else {
-                hashIP().then(hash => {
-                    if (!localStorage.getItem(hash)) {
-                        paymentModal.style.display = 'block';
-                    }
-                });
+                paymentModal.style.display = 'block';
             }
-        }
-
-        // WebRTC Setup
-        peer.on('open', (id) => {
-            console.log('Peer ID:', id);
-        });
-        peer.on('connection', (connection) => {
-            conn = connection;
-            setupConnection();
-        });
-
-        function setupConnection() {
-            conn.on('data', (data) => {
-                addMessage(`Friend: ${data}`);
-            });
-        }
-
-        function generateCode() {
-            const code = Math.floor(100000 + Math.random() * 900000).toString();
-            codeDisplay.textContent = `Your Code: ${code}`;
-            return code;
-        }
-
-        function joinChat(code) {
-            conn = peer.connect(code);
-            conn.on('open', () => {
-                setupConnection();
-            });
         }
 
         function addMessage(text) {
@@ -245,6 +202,69 @@
             messages.scrollTop = messages.scrollHeight;
         }
 
+        // PeerJS Setup
+        peer.on('open', (id) => {
+            console.log('Peer ID:', id);
+        });
+
+        peer.on('connection', (connection) => {
+            conn = connection;
+            setupConnection();
+            addMessage('Connected to peer!');
+        });
+
+        peer.on('error', (err) => {
+            console.error('PeerJS Error:', err);
+            alert('Connection error: ' + err.type);
+        });
+
+        function setupConnection() {
+            conn.on('open', () => {
+                console.log('Connection established');
+            });
+            conn.on('data', (data) => {
+                addMessage(`Friend: ${data}`);
+            });
+            conn.on('error', (err) => {
+                console.error('Connection Error:', err);
+            });
+        }
+
+        function generateCode() {
+            const code = Math.floor(100000 + Math.random() * 900000).toString();
+            codeDisplay.textContent = `Your Code: ${code}`;
+            return code;
+        }
+
+        function joinChat(code) {
+            if (!code || code.length !== 6) {
+                alert('Please enter a valid 6-digit code.');
+                return;
+            }
+            conn = peer.connect(code);
+            conn.on('open', () => {
+                setupConnection();
+                addMessage('Joined chat successfully!');
+            });
+        }
+
+        // Stripe Payment Integration
+        async function createCheckoutSession() {
+            try {
+                const response = await fetch('/create-checkout-session', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ priceId: 'price_1O...' }) // Replace with your Stripe Price ID
+                });
+                const session = await response.json();
+                const result = await stripe.redirectToCheckout({ sessionId: session.id });
+                if (result.error) throw result.error;
+            } catch (error) {
+                console.error('Stripe Error:', error);
+                alert('Payment error: ' + error.message);
+            }
+        }
+
         // Event Listeners
         enterBtn.onclick = () => {
             intro.style.display = 'none';
@@ -253,55 +273,38 @@
         };
 
         codeBtn.onclick = () => {
-            const code = generateCode();
+            generateCode();
         };
 
         joinBtn.onclick = () => {
-            const code = codeInput.value;
-            if (code.length === 6) joinChat(code);
+            const code = codeInput.value.trim();
+            joinChat(code);
         };
 
         sendBtn.onclick = () => {
-            const text = messageInput.value;
+            const text = messageInput.value.trim();
             if (!text) return;
             if (!isPremium && messageCount >= MAX_FREE_MESSAGES) {
                 alert('Free tier limit reached (50 messages). Upgrade to Premium!');
+                paymentModal.style.display = 'block';
                 return;
             }
-            if (conn) {
+            if (conn && conn.open) {
                 conn.send(text);
                 addMessage(`You: ${text}`);
                 messageCount++;
+            } else {
+                alert('Not connected to a peer yet.');
             }
             messageInput.value = '';
         };
 
-        // Payment Handling
         stripeBtn.onclick = () => {
-            // Mock Stripe checkout (replace with real integration)
-            hashIP().then(hash => {
-                localStorage.setItem(hash, 'premium');
-                localStorage.setItem('premiumKey', 'mockKey');
-                isPremium = true;
-                paymentModal.style.display = 'none';
-                alert('Premium unlocked (mock)!');
-            });
+            createCheckoutSession();
         };
 
-        cryptoBtn.onclick = () => {
-            // Mock Crypto payment (replace with Web3.js integration)
-            if (typeof window.ethereum !== 'undefined') {
-                hashIP().then(hash => {
-                    localStorage.setItem(hash, 'premium');
-                    localStorage.setItem('premiumKey', 'mockKey');
-                    isPremium = true;
-                    paymentModal.style.display = 'none';
-                    alert('Premium unlocked (mock crypto)!');
-                });
-            } else {
-                alert('Please install MetaMask for crypto payments.');
-            }
-        };
+        // Check premium status on load
+        checkPremium();
     </script>
 </body>
 </html>
