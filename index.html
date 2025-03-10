@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Quick Wrap - Simple P2P Chat</title>
+    <title>Quick Wrap - Next-Level P2P Chat</title>
     <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
@@ -17,7 +17,11 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            user-select: none;
+            transition: background 0.5s;
+        }
+        body.light-theme {
+            background: linear-gradient(135deg, #e0e0e0, #f0f0f0);
+            color: #333;
         }
         #intro {
             text-align: center;
@@ -25,7 +29,7 @@
             padding: 20px;
         }
         #intro h1 {
-            font-size: clamp(1.5rem, 5vw, 2.5rem);
+            font-size: clamp(2rem, 6vw, 3rem);
             text-shadow: 0 0 10px #0ff, 0 0 20px #f0f;
             margin: 0;
         }
@@ -36,26 +40,33 @@
             position: fixed;
             top: 0;
             left: 0;
+            display: flex;
         }
         #sidebar {
-            width: 100%;
-            height: 30%;
-            background: rgba(0, 0, 0, 0.8);
-            padding: 15px;
+            width: 300px;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 20px;
             box-sizing: border-box;
-            overflow-x: auto;
-            transition: background 0.5s;
+            overflow-y: auto;
+            transition: all 0.3s;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.5);
+        }
+        #sidebar.light-theme {
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
         }
         #chatWindow {
-            width: 100%;
-            height: 70%;
+            flex-grow: 1;
+            height: 100%;
             background: rgba(10, 10, 20, 0.95);
             padding: 20px;
             overflow-y: auto;
             box-sizing: border-box;
-            transition: background 0.5s;
-            display: flex;
-            flex-direction: column;
+            transition: all 0.3s;
+        }
+        #chatWindow.light-theme {
+            background: rgba(240, 240, 240, 0.95);
         }
         #messages {
             flex-grow: 1;
@@ -76,6 +87,10 @@
             border-radius: 5px;
             font-size: 1rem;
         }
+        .light-theme #messageInput {
+            background: rgba(0, 0, 0, 0.1);
+            color: #333;
+        }
         .message {
             margin: 10px 0;
             padding: 12px;
@@ -84,17 +99,19 @@
             animation: slideIn 0.3s ease;
             word-wrap: break-word;
             font-size: 1rem;
+            position: relative;
         }
-        .system-message {
-            background: rgba(0, 255, 255, 0.15);
+        .message .timestamp {
+            font-size: 0.8rem;
+            color: #aaa;
+            position: absolute;
+            bottom: 2px;
+            right: 5px;
         }
-        .friend-message {
-            background: rgba(255, 102, 255, 0.25);
-        }
-        .your-message {
-            background: rgba(102, 204, 255, 0.25);
-            text-align: right;
-        }
+        .system-message { background: rgba(0, 255, 255, 0.15); }
+        .friend-message { background: rgba(255, 102, 255, 0.25); }
+        .your-message { background: rgba(102, 204, 255, 0.25); text-align: right; }
+        .light-theme .message { background: rgba(0, 0, 0, 0.15); }
         button {
             padding: 10px 20px;
             background: #0ff;
@@ -103,16 +120,16 @@
             cursor: pointer;
             border-radius: 5px;
             font-weight: 700;
-            transition: transform 0.2s, box-shadow 0.2s;
-            margin: 5px;
-            font-size: 1rem;
+            transition: all 0.2s;
+            margin: 5px 0;
+            width: 100%;
         }
         button:hover {
-            transform: scale(1.05);
+            transform: scale(1.03);
             box-shadow: 0 0 15px #0ff;
         }
         #codeInput {
-            width: 70%;
+            width: 100%;
             padding: 12px;
             background: rgba(255, 255, 255, 0.15);
             border: 1px solid #0ff;
@@ -121,27 +138,13 @@
             margin: 5px 0;
             font-size: 1rem;
         }
-        #codeDisplay, #status {
+        #codeDisplay, #status, #typingIndicator {
             margin: 10px 0;
             font-size: 1rem;
             color: #0ff;
             word-break: break-all;
-            transition: color 0.5s;
         }
-        .connected #sidebar {
-            background: rgba(0, 255, 255, 0.2);
-        }
-        .connected #chatWindow {
-            background: rgba(0, 20, 40, 0.95);
-        }
-        .connected #status {
-            color: #0f0;
-            text-shadow: 0 0 10px #0f0;
-        }
-        @media (min-width: 769px) {
-            #sidebar { width: 25%; height: 100%; float: left; }
-            #chatWindow { width: 75%; height: 100%; float: right; }
-        }
+        .connected #status { color: #0f0; text-shadow: 0 0 10px #0f0; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideIn { from { transform: translateX(-20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
@@ -149,18 +152,23 @@
 </head>
 <body>
     <div id="intro">
-        <h1>Quick Wrap: Simple P2P Chat</h1>
-        <p>Generate a code, share it, and chat!</p>
-        <button id="enterBtn">Start Chatting</button>
+        <h1>Quick Wrap: Next-Level P2P Chat</h1>
+        <p>Your code, your chat, your vibe!</p>
+        <button id="enterBtn">Dive In</button>
     </div>
 
     <div id="chatPage">
         <div id="sidebar">
-            <button id="codeBtn">Generate Code</button>
+            <h2>Your Chat Hub</h2>
+            <button id="codeBtn">New Code</button>
             <input id="codeInput" placeholder="Enter Friend's Code" maxlength="5" inputmode="numeric">
             <button id="joinBtn">Join Chat</button>
             <p id="codeDisplay"></p>
             <p id="status">Status: Disconnected</p>
+            <p id="typingIndicator"></p>
+            <button id="refreshBtn">Refresh Chat</button>
+            <button id="themeBtn">Toggle Theme</button>
+            <button id="disconnectBtn">Disconnect</button>
         </div>
         <div id="chatWindow">
             <div id="messages"></div>
@@ -174,8 +182,9 @@
     <script>
         let peer = null;
         let conn = null;
-        let currentCode = null;
+        let currentCode = localStorage.getItem('chatCode') || null;
         let isInitiator = false;
+        let isTyping = false;
 
         const elements = {
             intro: document.getElementById('intro'),
@@ -188,230 +197,157 @@
             messages: document.getElementById('messages'),
             messageInput: document.getElementById('messageInput'),
             sendBtn: document.getElementById('sendBtn'),
-            status: document.getElementById('status')
+            status: document.getElementById('status'),
+            refreshBtn: document.getElementById('refreshBtn'),
+            themeBtn: document.getElementById('themeBtn'),
+            disconnectBtn: document.getElementById('disconnectBtn'),
+            typingIndicator: document.getElementById('typingIndicator')
         };
 
-        // Generate a 5-digit numeric code
+        // Load saved theme
+        if (localStorage.getItem('theme') === 'light') {
+            document.body.classList.add('light-theme');
+        }
+
+        // Generate or use persistent code
         function generateShortCode() {
-            return Math.floor(10000 + Math.random() * 90000).toString();
+            const code = Math.floor(10000 + Math.random() * 90000).toString();
+            localStorage.setItem('chatCode', code);
+            return code;
         }
 
         // Setup PeerJS connection
         function setupPeer(id, initiator) {
-            cleanup(); // Clean up any existing connections first
-            
-            try {
-                peer = new Peer(id, {
-                    // Using PeerJS's free public server instead of the deprecated Heroku one
-                    // No host specified - will use PeerJS's default public server
-                    debug: 2,
-                    config: {
-                        iceServers: [
-                            { urls: 'stun:stun.l.google.com:19302' },
-                            { urls: 'stun:stun1.l.google.com:19302' },
-                            {
-                                urls: [
-                                    'turn:openrelay.metered.ca:80',
-                                    'turn:openrelay.metered.ca:443',
-                                    'turn:openrelay.metered.ca:443?transport=tcp'
-                                ],
-                                username: 'openrelayproject',
-                                credential: 'openrelayproject'
-                            }
-                        ]
-                    }
-                });
-
-                peer.on('open', (id) => {
-                    console.log('My peer ID is: ' + id);
-                    elements.status.textContent = initiator
-                        ? 'Status: Waiting for friend to join with your code...'
-                        : 'Status: Connecting to friend...';
-                    
-                    if (initiator) {
-                        // Display the code for sharing
-                        elements.codeDisplay.textContent = `Your Code: ${currentCode}`;
-                        addMessage('System: Code generated! Share it with your friend.', 'system-message');
-                    }
-                });
-
-                peer.on('connection', (connection) => {
-                    console.log('Incoming connection!');
-                    if (conn) {
-                        // Already connected, reject additional connections
-                        connection.close();
-                        return;
-                    }
-                    
-                    conn = connection;
-                    setupConnection();
-                });
-
-                peer.on('error', (err) => {
-                    console.error('Peer error:', err);
-                    elements.status.textContent = `Status: Error - ${err.type || err.message}`;
-                    
-                    if (err.type === 'peer-unavailable') {
-                        addMessage('System: Could not find a friend with that code. Check the code and try again.', 'system-message');
-                    } else if (err.type === 'network' || err.type === 'disconnected') {
-                        addMessage('System: Network error. Please check your internet connection.', 'system-message');
-                    } else {
-                        addMessage(`System: Connection error (${err.type || 'unknown'})`, 'system-message');
-                    }
-                    
-                    // Don't fully cleanup on error, allow retrying
-                    if (err.type === 'peer-unavailable') {
-                        if (conn) {
-                            conn.close();
-                            conn = null;
+            cleanup();
+            peer = new Peer(id, {
+                debug: 2,
+                config: {
+                    iceServers: [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        {
+                            urls: 'turn:openrelay.metered.ca:443',
+                            username: 'openrelayproject',
+                            credential: 'openrelayproject'
                         }
-                    } else {
-                        cleanup();
-                    }
-                });
-
-                peer.on('disconnected', () => {
-                    elements.status.textContent = 'Status: Disconnected from server';
-                    addMessage('System: Lost connection to the server. Attempting to reconnect...', 'system-message');
-                    
-                    // Try to reconnect
-                    setTimeout(() => {
-                        if (peer) {
-                            peer.reconnect();
-                        }
-                    }, 3000);
-                });
-                
-                peer.on('close', () => {
-                    elements.status.textContent = 'Status: Connection closed';
-                    addMessage('System: Connection closed.', 'system-message');
-                    cleanup();
-                });
-                
-            } catch (error) {
-                console.error('Setup error:', error);
-                elements.status.textContent = `Status: Setup failed - ${error.message}`;
-                addMessage('System: Failed to initialize connection. Please try again.', 'system-message');
-            }
-        }
-
-        // Connect to another peer as the joiner
-        function connectToPeer(peerId) {
-            try {
-                if (!peer || !peer.id) {
-                    addMessage('System: Not connected to server yet. Please wait a moment and try again.', 'system-message');
-                    return false;
+                    ]
                 }
-                
-                // Connect to the peer with the given ID
-                conn = peer.connect(peerId, {
-                    reliable: true
-                });
-                
-                if (!conn) {
-                    addMessage('System: Failed to create connection.', 'system-message');
-                    return false;
+            });
+
+            peer.on('open', () => {
+                elements.status.textContent = initiator
+                    ? 'Status: Waiting for friend...'
+                    : 'Status: Connecting...';
+                if (initiator) {
+                    elements.codeDisplay.textContent = `Your Code: ${currentCode}`;
+                    addMessage('System: Share your code to connect!', 'system-message');
                 }
-                
+            });
+
+            peer.on('connection', (connection) => {
+                if (conn) {
+                    connection.close();
+                    return;
+                }
+                conn = connection;
                 setupConnection();
-                return true;
-            } catch (error) {
-                console.error('Connect error:', error);
-                addMessage(`System: Connection attempt failed - ${error.message}`, 'system-message');
-                return false;
-            }
+            });
+
+            peer.on('error', (err) => {
+                elements.status.textContent = `Status: Error - ${err.type}`;
+                addMessage(`System: Error (${err.type})`, 'system-message');
+            });
+
+            peer.on('disconnected', () => {
+                elements.status.textContent = 'Status: Reconnecting...';
+                addMessage('System: Reconnecting...', 'system-message');
+                setTimeout(() => peer.reconnect(), 2000);
+            });
         }
 
-        // Setup the data connection
+        // Connect to peer
+        function connectToPeer(peerId) {
+            if (!peer) return;
+            conn = peer.connect(peerId, { reliable: true });
+            setupConnection();
+        }
+
+        // Setup connection handlers
         function setupConnection() {
-            if (!conn) {
-                addMessage('System: Connection object is null.', 'system-message');
-                return;
-            }
-            
             conn.on('open', () => {
-                console.log('Connection established!');
                 document.body.classList.add('connected');
-                elements.status.textContent = 'Status: Connected - Let\'s Chat!';
-                elements.status.style.animation = 'pulse 1s infinite';
-                addMessage('System: Connected! Start chatting with your friend.', 'system-message');
+                elements.status.textContent = 'Status: Connected!';
+                addMessage('System: Chat on!', 'system-message');
             });
 
             conn.on('data', (data) => {
-                console.log('Received:', data);
-                addMessage(`Friend: ${data}`, 'friend-message');
-            });
-
-            conn.on('close', () => {
-                console.log('Connection closed');
-                document.body.classList.remove('connected');
-                elements.status.textContent = 'Status: Disconnected';
-                elements.status.style.animation = 'none';
-                addMessage('System: Friend disconnected.', 'system-message');
-                
-                // Only cleanup the connection, not the peer
-                if (conn) {
-                    conn = null;
+                if (data === '__TYPING__') {
+                    elements.typingIndicator.textContent = 'Friend is typing...';
+                } else if (data === '__STOP_TYPING__') {
+                    elements.typingIndicator.textContent = '';
+                } else {
+                    elements.typingIndicator.textContent = '';
+                    addMessage(`Friend: ${data}`, 'friend-message');
                 }
             });
 
-            conn.on('error', (err) => {
-                console.error('Connection error:', err);
-                elements.status.textContent = `Status: Connection error - ${err.message}`;
-                addMessage('System: Error in connection.', 'system-message');
+            conn.on('close', () => {
+                document.body.classList.remove('connected');
+                elements.status.textContent = 'Status: Disconnected';
+                addMessage('System: Friend disconnected.', 'system-message');
+                conn = null;
+                if (isInitiator && currentCode) {
+                    setupPeer(currentCode, true); // Re-listen with same code
+                }
             });
         }
 
-        // Send a message
+        // Send message
         function sendMessage() {
             const text = elements.messageInput.value.trim();
-            if (!text) {
-                return;
-            }
-            
-            if (!conn || !conn.open) {
-                elements.status.textContent = 'Status: Not connected';
-                addMessage('System: Not connected. Generate a code or join a chat first.', 'system-message');
-                return;
-            }
-            
-            try {
-                conn.send(text);
-                addMessage(`You: ${text}`, 'your-message');
-                elements.messageInput.value = '';
-            } catch (error) {
-                console.error('Send error:', error);
-                addMessage('System: Failed to send message.', 'system-message');
-            }
+            if (!text || !conn || !conn.open) return;
+            conn.send(text);
+            addMessage(`You: ${text}`, 'your-message');
+            elements.messageInput.value = '';
+            conn.send('__STOP_TYPING__');
         }
 
-        // Add message to the chat
-        function addMessage(text, className = '') {
+        // Add message with timestamp
+        function addMessage(text, className) {
             const msg = document.createElement('div');
             msg.className = `message ${className}`;
-            msg.textContent = text;
+            msg.innerHTML = `${text}<span class="timestamp">${new Date().toLocaleTimeString()}</span>`;
             elements.messages.appendChild(msg);
             elements.messages.scrollTop = elements.messages.scrollHeight;
         }
 
-        // Cleanup function to reset connection
+        // Cleanup
         function cleanup() {
-            if (conn) {
-                conn.close();
-                conn = null;
-            }
-            if (peer) {
-                peer.destroy();
-                peer = null;
-            }
+            if (conn) conn.close();
+            if (peer) peer.destroy();
+            conn = null;
+            peer = null;
             document.body.classList.remove('connected');
-            elements.status.style.animation = 'none';
         }
+
+        // Typing detection
+        elements.messageInput.addEventListener('input', () => {
+            if (!conn || !conn.open) return;
+            if (!isTyping) {
+                conn.send('__TYPING__');
+                isTyping = true;
+            }
+            clearTimeout(window.typingTimeout);
+            window.typingTimeout = setTimeout(() => {
+                conn.send('__STOP_TYPING__');
+                isTyping = false;
+            }, 1000);
+        });
 
         // Event Listeners
         elements.enterBtn.addEventListener('click', () => {
             elements.intro.style.display = 'none';
-            elements.chatPage.style.display = 'block';
+            elements.chatPage.style.display = 'flex';
+            if (currentCode) elements.codeDisplay.textContent = `Your Code: ${currentCode}`;
         });
 
         elements.codeBtn.addEventListener('click', () => {
@@ -423,46 +359,34 @@
 
         elements.joinBtn.addEventListener('click', () => {
             const code = elements.codeInput.value.trim();
-            if (!code || code.length !== 5 || !/^\d+$/.test(code)) {
-                elements.status.textContent = 'Status: Invalid code';
-                addMessage('System: Please enter a valid 5-digit code.', 'system-message');
-                return;
-            }
-            
+            if (!code || code.length !== 5 || !/^\d+$/.test(code)) return;
             cleanup();
             isInitiator = false;
-            currentCode = code;
-            
-            // Use a random ID for the joiner
-            const joinerId = 'joiner-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
-            setupPeer(joinerId, false);
-            
-            // Add a slight delay to ensure the peer is ready
-            setTimeout(() => {
-                elements.codeDisplay.textContent = `Joining: ${code}`;
-                connectToPeer(code);
-            }, 1000);
+            setupPeer('joiner-' + Date.now(), false);
+            setTimeout(() => connectToPeer(code), 1000);
         });
 
         elements.sendBtn.addEventListener('click', sendMessage);
-        
-        // Allow sending with Enter key
         elements.messageInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                sendMessage();
-            }
+            if (e.key === 'Enter') sendMessage();
         });
 
-        // Prevent accidental navigation
-        window.addEventListener('beforeunload', (e) => {
-            if (conn && conn.open) {
-                const message = 'You are connected to a chat. Leaving will disconnect you.';
-                e.returnValue = message;
-                return message;
-            }
+        elements.refreshBtn.addEventListener('click', () => {
+            elements.messages.innerHTML = '';
+            addMessage('System: Chat refreshed!', 'system-message');
         });
-        
-        // Cleanup when page closes
+
+        elements.themeBtn.addEventListener('click', () => {
+            document.body.classList.toggle('light-theme');
+            localStorage.setItem('theme', document.body.classList.contains('light-theme') ? 'light' : 'dark');
+        });
+
+        elements.disconnectBtn.addEventListener('click', () => {
+            cleanup();
+            elements.status.textContent = 'Status: Disconnected';
+            addMessage('System: You disconnected.', 'system-message');
+        });
+
         window.addEventListener('unload', cleanup);
     </script>
 </body>
