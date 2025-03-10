@@ -36,28 +36,31 @@
             position: fixed;
             top: 0;
             left: 0;
+            display: flex;
         }
         #sidebar {
-            width: 100%;
-            height: 30%;
+            width: 30%;
+            height: 100%;
             background: rgba(0, 0, 0, 0.8);
             padding: 15px;
             box-sizing: border-box;
-            overflow-x: auto;
+            overflow-y: auto;
             transition: all 0.5s ease;
             display: flex;
             flex-direction: column;
             gap: 10px;
+            position: fixed;
+            left: 0;
+            top: 0;
         }
         #sidebar.connected {
             background: linear-gradient(45deg, rgba(0, 255, 255, 0.3), rgba(255, 0, 255, 0.3));
             box-shadow: inset 0 0 20px rgba(0, 255, 255, 0.5);
-            transform: translateX(0);
             animation: glowPulse 2s infinite;
         }
         #chatWindow {
-            width: 100%;
-            height: 70%;
+            width: 70%;
+            height: 100%;
             background: rgba(10, 10, 20, 0.95);
             padding: 20px;
             overflow-y: auto;
@@ -65,6 +68,7 @@
             transition: background 0.5s;
             display: flex;
             flex-direction: column;
+            margin-left: 30%;
         }
         #messages {
             flex-grow: 1;
@@ -144,12 +148,11 @@
         }
         #featurePanel {
             display: flex;
-            flex-wrap: wrap;
+            flex-direction: column;
             gap: 10px;
             margin-top: 10px;
         }
         .feature-btn {
-            flex: 1 1 45%;
             padding: 8px;
             background: rgba(0, 255, 255, 0.2);
             border: 1px solid #0ff;
@@ -157,11 +160,9 @@
         .feature-btn:hover {
             background: rgba(0, 255, 255, 0.4);
         }
-        @media (min-width: 769px) {
-            #sidebar { width: 30%; height: 100%; float: left; }
-            #chatWindow { width: 70%; height: 100%; float: right; }
-            #featurePanel { flex-direction: column; }
-            .feature-btn { flex: 1 1 auto; }
+        @media (max-width: 768px) {
+            #sidebar { width: 100%; height: 40%; position: relative; }
+            #chatWindow { width: 100%; height: 60%; margin-left: 0; margin-top: 40%; }
         }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideIn { from { transform: translateX(-20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
@@ -253,85 +254,126 @@
         // Setup PeerJS connection
         function setupPeer(id, initiator) {
             cleanup();
-            peer = new Peer(id, {
-                debug: 2,
-                config: {
-                    iceServers: [
-                        { urls: 'stun:stun.l.google.com:19302' },
-                        { urls: 'stun:stun1.l.google.com:19302' },
-                        {
-                            urls: [
-                                'turn:openrelay.metered.ca:80',
-                                'turn:openrelay.metered.ca:443',
-                                'turn:openrelay.metered.ca:443?transport=tcp'
-                            ],
-                            username: 'openrelayproject',
-                            credential: 'openrelayproject'
-                        }
-                    ]
-                }
-            });
+            try {
+                peer = new Peer(id, {
+                    debug: 2,
+                    config: {
+                        iceServers: [
+                            { urls: 'stun:stun.l.google.com:19302' },
+                            { urls: 'stun:stun1.l.google.com:19302' },
+                            {
+                                urls: [
+                                    'turn:openrelay.metered.ca:80',
+                                    'turn:openrelay.metered.ca:443',
+                                    'turn:openrelay.metered.ca:443?transport=tcp'
+                                ],
+                                username: 'openrelayproject',
+                                credential: 'openrelayproject'
+                            }
+                        ]
+                    }
+                });
 
-            peer.on('open', (id) => {
-                elements.status.textContent = initiator
-                    ? 'Status: Waiting for friend...'
-                    : 'Status: Connecting...';
-                if (initiator) {
-                    elements.codeDisplay.textContent = `Your Code: ${currentCode}`;
-                    addMessage('System: Code generated! Share it.', 'system-message');
-                }
-            });
+                peer.on('open', (id) => {
+                    console.log('My peer ID is: ' + id);
+                    elements.status.textContent = initiator
+                        ? 'Status: Waiting for friend to join with your code...'
+                        : 'Status: Connecting to friend...';
+                    if (initiator) {
+                        elements.codeDisplay.textContent = `Your Code: ${currentCode}`;
+                        addMessage('System: Code generated! Share it with your friend.', 'system-message');
+                    }
+                });
 
-            peer.on('connection', (connection) => {
-                if (conn) {
-                    connection.close();
-                    return;
-                }
-                conn = connection;
-                setupConnection();
-            });
+                peer.on('connection', (connection) => {
+                    console.log('Incoming connection!');
+                    if (conn) {
+                        connection.close();
+                        return;
+                    }
+                    conn = connection;
+                    setupConnection();
+                });
 
-            peer.on('error', (err) => {
-                elements.status.textContent = `Status: Error - ${err.type}`;
-                addMessage(`System: Error (${err.type})`, 'system-message');
-            });
+                peer.on('error', (err) => {
+                    console.error('Peer error:', err);
+                    elements.status.textContent = `Status: Error - ${err.type || err.message}`;
+                    if (err.type === 'peer-unavailable') {
+                        addMessage('System: Could not find a friend with that code. Check the code and try again.', 'system-message');
+                    } else if (err.type === 'network' || err.type === 'disconnected') {
+                        addMessage('System: Network error. Please check your internet connection.', 'system-message');
+                    } else {
+                        addMessage(`System: Connection error (${err.type || 'unknown'})`, 'system-message');
+                    }
+                    if (err.type === 'peer-unavailable' && conn) {
+                        conn.close();
+                        conn = null;
+                    } else {
+                        cleanup();
+                    }
+                });
 
-            peer.on('disconnected', () => {
-                elements.status.textContent = 'Status: Disconnected';
-                addMessage('System: Lost connection. Reconnecting...', 'system-message');
-                setTimeout(() => peer.reconnect(), 3000);
-            });
+                peer.on('disconnected', () => {
+                    elements.status.textContent = 'Status: Disconnected from server';
+                    addMessage('System: Lost connection to the server. Attempting to reconnect...', 'system-message');
+                    setTimeout(() => peer && peer.reconnect(), 3000);
+                });
 
-            peer.on('close', () => {
-                elements.status.textContent = 'Status: Closed';
-                cleanup();
-            });
+                peer.on('close', () => {
+                    elements.status.textContent = 'Status: Connection closed';
+                    addMessage('System: Connection closed.', 'system-message');
+                    cleanup();
+                });
+            } catch (error) {
+                console.error('Setup error:', error);
+                elements.status.textContent = `Status: Setup failed - ${error.message}`;
+                addMessage('System: Failed to initialize connection. Please try again.', 'system-message');
+            }
         }
 
         // Connect to another peer
         function connectToPeer(peerId) {
-            if (!peer || !peer.id) return false;
-            conn = peer.connect(peerId, { reliable: true });
-            if (!conn) return false;
-            setupConnection();
-            return true;
+            try {
+                if (!peer || !peer.id) {
+                    addMessage('System: Not connected to server yet. Please wait a moment and try again.', 'system-message');
+                    return false;
+                }
+                conn = peer.connect(peerId, { reliable: true });
+                if (!conn) {
+                    addMessage('System: Failed to create connection.', 'system-message');
+                    return false;
+                }
+                setupConnection();
+                return true;
+            } catch (error) {
+                console.error('Connect error:', error);
+                addMessage(`System: Connection attempt failed - ${error.message}`, 'system-message');
+                return false;
+            }
         }
 
         // Setup the data connection
         function setupConnection() {
+            if (!conn) {
+                addMessage('System: Connection object is null.', 'system-message');
+                return;
+            }
             conn.on('open', () => {
+                console.log('Connection established!');
                 document.body.classList.add('connected');
                 elements.sidebar.classList.add('connected');
-                elements.status.textContent = 'Status: Connected!';
+                elements.status.textContent = 'Status: Connected - Let\'s Chat!';
                 elements.friendStatus.textContent = 'Friend: Online';
-                addMessage('System: Connected! Chat away!', 'system-message');
+                addMessage('System: Connected! Start chatting with your friend.', 'system-message');
             });
 
             conn.on('data', (data) => {
+                console.log('Received:', data);
                 addMessage(`Friend: ${data}`, 'friend-message');
             });
 
             conn.on('close', () => {
+                console.log('Connection closed');
                 document.body.classList.remove('connected');
                 elements.sidebar.classList.remove('connected');
                 elements.status.textContent = 'Status: Disconnected';
@@ -339,17 +381,30 @@
                 addMessage('System: Friend disconnected.', 'system-message');
                 conn = null;
             });
+
+            conn.on('error', (err) => {
+                console.error('Connection error:', err);
+                elements.status.textContent = `Status: Connection error - ${err.message}`;
+                addMessage('System: Error in connection.', 'system-message');
+            });
         }
 
         // Send a message
         function sendMessage(text = elements.messageInput.value.trim()) {
-            if (!text || !conn || !conn.open) {
-                addMessage('System: Not connected.', 'system-message');
+            if (!text) return;
+            if (!conn || !conn.open) {
+                elements.status.textContent = 'Status: Not connected';
+                addMessage('System: Not connected. Generate a code or join a chat first.', 'system-message');
                 return;
             }
-            conn.send(text);
-            addMessage(`You: ${text}`, 'your-message');
-            elements.messageInput.value = '';
+            try {
+                conn.send(text);
+                addMessage(`You: ${text}`, 'your-message');
+                elements.messageInput.value = '';
+            } catch (error) {
+                console.error('Send error:', error);
+                addMessage('System: Failed to send message.', 'system-message');
+            }
         }
 
         // Add message to chat and save to history
@@ -393,13 +448,9 @@
         // Feature handlers
         function changeTheme() {
             const theme = elements.themeSelect.value;
-            if (theme === 'dark') {
-                document.body.style.background = 'linear-gradient(135deg, #0a0a2a, #1a0033)';
-            } else if (theme === 'light') {
-                document.body.style.background = 'linear-gradient(135deg, #66ccff, #ff66ff)';
-            } else {
-                document.body.style.background = 'linear-gradient(135deg, #1a1a3d, #2a0a4d)';
-            }
+            document.body.style.background = theme === 'dark' ? 'linear-gradient(135deg, #0a0a2a, #1a0033)' :
+                                            theme === 'light' ? 'linear-gradient(135deg, #66ccff, #ff66ff)' :
+                                            'linear-gradient(135deg, #1a1a3d, #2a0a4d)';
         }
 
         function changeFontSize() {
@@ -411,7 +462,7 @@
         // Event Listeners
         elements.enterBtn.addEventListener('click', () => {
             elements.intro.style.display = 'none';
-            elements.chatPage.style.display = 'block';
+            elements.chatPage.style.display = 'flex';
             loadChatHistory();
         });
 
@@ -425,7 +476,8 @@
         elements.joinBtn.addEventListener('click', () => {
             const code = elements.codeInput.value.trim();
             if (!/^\d{5}$/.test(code)) {
-                addMessage('System: Invalid 5-digit code.', 'system-message');
+                elements.status.textContent = 'Status: Invalid code';
+                addMessage('System: Please enter a valid 5-digit code.', 'system-message');
                 return;
             }
             cleanup();
