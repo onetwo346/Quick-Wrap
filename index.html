@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quick Wrap</title>
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Quick Wrap - Secure P2P Chat</title>
+    <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;700&display=swap" rel="stylesheet">
     <style>
         body {
             margin: 0;
@@ -21,75 +23,67 @@
             animation: fadeIn 1s ease-in;
         }
         #intro h1 {
-            font-size: clamp(1.5em, 5vw, 2.5em);
+            font-size: clamp(1.5rem, 5vw, 2.5rem);
             text-shadow: 0 0 10px #0ff, 0 0 20px #f0f;
-        }
-        #intro p {
-            font-size: clamp(1em, 3vw, 1.2em);
-            margin: 10px 0;
-        }
-        #enterBtn {
-            padding: 15px 30px;
-            font-size: 1.2em;
-            background: none;
-            border: 2px solid #0ff;
-            color: #0ff;
-            border-radius: 25px;
-            cursor: pointer;
-            animation: pulse 2s infinite;
-            transition: transform 0.2s;
-        }
-        #enterBtn:hover {
-            transform: scale(1.1);
-            box-shadow: 0 0 20px #0ff;
         }
         #chatPage {
             display: none;
             width: 100%;
             height: 100%;
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
-            box-sizing: border-box;
         }
         #sidebar {
-            width: 20%;
+            width: 25%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            float: left;
+            padding: 15px;
             box-sizing: border-box;
         }
         #chatWindow {
-            width: 80%;
+            width: 75%;
             height: 100%;
-            background: rgba(10, 10, 20, 0.9);
+            float: right;
+            background: rgba(10, 10, 20, 0.95);
             padding: 20px;
             overflow-y: auto;
             box-sizing: border-box;
         }
         #messageInput {
             width: 70%;
-            padding: 10px;
-            background: rgba(255, 255, 255, 0.1);
-            border: none;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid #0ff;
             color: #fff;
             border-radius: 5px;
+            margin-right: 10px;
         }
-        #sendBtn, #codeBtn, #joinBtn {
-            padding: 10px;
+        #messages {
+            min-height: 80%;
+        }
+        .message {
+            margin: 10px 0;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.25);
+            border-radius: 8px;
+            animation: slideIn 0.3s ease;
+            word-wrap: break-word;
+        }
+        button {
+            padding: 10px 20px;
             background: #0ff;
             border: none;
             color: #000;
             cursor: pointer;
             border-radius: 5px;
-            margin: 5px;
+            font-weight: 700;
+            transition: transform 0.2s, box-shadow 0.2s;
         }
-        .message {
-            margin: 10px 0;
-            padding: 10px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 10px;
-            animation: slideIn 0.3s ease;
+        button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px #0ff;
         }
         #paymentModal {
             display: none;
@@ -98,50 +92,39 @@
             left: 50%;
             transform: translate(-50%, -50%);
             background: rgba(0, 0, 0, 0.9);
-            padding: 20px;
+            padding: 30px;
             border: 2px solid #0ff;
             border-radius: 10px;
-            text-align: center;
             z-index: 1000;
         }
-        @keyframes pulse {
-            0% { box-shadow: 0 0 5px #0ff; }
-            50% { box-shadow: 0 0 20px #0ff; }
-            100% { box-shadow: 0 0 5px #0ff; }
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        @keyframes slideIn {
-            from { transform: translateX(-20px); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
+        #codeDisplay {
+            margin: 10px 0;
+            font-size: 1.1rem;
+            color: #0ff;
         }
         @media (max-width: 768px) {
-            #sidebar { width: 100%; height: 25%; float: none; }
-            #chatWindow { width: 100%; height: 75%; float: none; }
+            #sidebar { width: 100%; height: 30%; float: none; }
+            #chatWindow { width: 100%; height: 70%; float: none; }
             #messageInput { width: 60%; }
         }
-        @media (max-width: 480px) {
-            #sidebar { height: 30%; }
-            #chatWindow { height: 70%; }
-            #messageInput { width: 50%; }
-        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideIn { from { transform: translateX(-20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
     </style>
 </head>
 <body>
     <div id="intro">
-        <h1>Quick Wrap: Peer-to-Peer Chat</h1>
-        <p>Generate a code. Connect instantly. No servers needed.</p>
-        <button id="enterBtn">Tap to Start Chatting</button>
+        <h1>Quick Wrap: Secure P2P Chat</h1>
+        <p>End-to-end encrypted, serverless communication</p>
+        <button id="enterBtn">Start Chatting</button>
     </div>
 
     <div id="chatPage">
         <div id="sidebar">
             <button id="codeBtn">Generate Code</button>
-            <input id="codeInput" placeholder="Enter Code" maxlength="6">
+            <input id="codeInput" placeholder="Enter Friend's Code" maxlength="36">
             <button id="joinBtn">Join Chat</button>
             <p id="codeDisplay"></p>
+            <p id="status">Status: Disconnected</p>
         </div>
         <div id="chatWindow">
             <div id="messages"></div>
@@ -151,71 +134,64 @@
     </div>
 
     <div id="paymentModal">
-        <h2>Unlock Premium for $1!</h2>
-        <p>Unlimited messages & more.</p>
+        <h2>Upgrade to Premium</h2>
+        <p>Free: 50 messages/day | Premium: Unlimited ($5 one-time)</p>
         <button id="stripeBtn">Pay with Stripe</button>
+        <button id="closeModal">Use Free Tier</button>
     </div>
 
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://js.stripe.com/v3/"></script>
     <script>
-        // Initialize Stripe with your public key
-        const stripe = Stripe('pk_test_51O...'); // Replace with your actual Stripe public key
-
-        // Core Variables
-        const peer = new Peer({ host: 'peerjs-server.herokuapp.com', secure: true, port: 443 });
+        const stripe = Stripe('pk_test_51YOURSTRIPEPUBLICKEYHERE'); // Replace with your Stripe public key
+        const peer = new Peer({
+            host: 'peerjs-server.herokuapp.com', // Reliable public PeerJS server
+            secure: true,
+            port: 443,
+            config: { 'iceServers': [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'turn:relay1.expressturn.com:3478', username: 'user', credential: 'pass' }
+            ]}
+        });
         let conn = null;
         let messageCount = 0;
         const MAX_FREE_MESSAGES = 50;
         let isPremium = false;
+        const storedMessages = JSON.parse(localStorage.getItem('chatHistory')) || {};
 
-        // DOM Elements
-        const intro = document.getElementById('intro');
-        const chatPage = document.getElementById('chatPage');
-        const enterBtn = document.getElementById('enterBtn');
-        const codeBtn = document.getElementById('codeBtn');
-        const joinBtn = document.getElementById('joinBtn');
-        const codeInput = document.getElementById('codeInput');
-        const codeDisplay = document.getElementById('codeDisplay');
-        const messages = document.getElementById('messages');
-        const messageInput = document.getElementById('messageInput');
-        const sendBtn = document.getElementById('sendBtn');
-        const paymentModal = document.getElementById('paymentModal');
-        const stripeBtn = document.getElementById('stripeBtn');
+        const elements = {
+            intro: document.getElementById('intro'),
+            chatPage: document.getElementById('chatPage'),
+            enterBtn: document.getElementById('enterBtn'),
+            codeBtn: document.getElementById('codeBtn'),
+            joinBtn: document.getElementById('joinBtn'),
+            codeInput: document.getElementById('codeInput'),
+            codeDisplay: document.getElementById('codeDisplay'),
+            messages: document.getElementById('messages'),
+            messageInput: document.getElementById('messageInput'),
+            sendBtn: document.getElementById('sendBtn'),
+            paymentModal: document.getElementById('paymentModal'),
+            stripeBtn: document.getElementById('stripeBtn'),
+            closeModal: document.getElementById('closeModal'),
+            status: document.getElementById('status')
+        };
 
-        // Utility Functions
-        async function checkPremium() {
-            const premiumKey = localStorage.getItem('premiumKey');
-            if (premiumKey) {
-                isPremium = true;
-                paymentModal.style.display = 'none';
-            } else {
-                paymentModal.style.display = 'block';
-            }
-        }
-
-        function addMessage(text) {
-            const msg = document.createElement('div');
-            msg.className = 'message';
-            msg.textContent = text;
-            messages.appendChild(msg);
-            messages.scrollTop = messages.scrollHeight;
-        }
-
-        // PeerJS Setup
+        // PeerJS Connection Handling
         peer.on('open', (id) => {
-            console.log('Peer ID:', id);
+            console.log('My Peer ID:', id);
+            elements.codeDisplay.textContent = `Your Code: ${id}`;
+            loadChatHistory(id);
         });
 
         peer.on('connection', (connection) => {
             conn = connection;
             setupConnection();
-            addMessage('Connected to peer!');
+            elements.status.textContent = 'Status: Connected';
         });
 
         peer.on('error', (err) => {
             console.error('PeerJS Error:', err);
-            alert('Connection error: ' + err.type);
+            elements.status.textContent = `Status: Error - ${err.type}`;
         });
 
         function setupConnection() {
@@ -223,88 +199,123 @@
                 console.log('Connection established');
             });
             conn.on('data', (data) => {
-                addMessage(`Friend: ${data}`);
+                addMessage(`Friend: ${data}`, conn.peer);
             });
-            conn.on('error', (err) => {
-                console.error('Connection Error:', err);
+            conn.on('close', () => {
+                elements.status.textContent = 'Status: Disconnected';
+                conn = null;
             });
         }
 
         function generateCode() {
-            const code = Math.floor(100000 + Math.random() * 900000).toString();
-            codeDisplay.textContent = `Your Code: ${code}`;
-            return code;
+            elements.codeDisplay.textContent = `Your Code: ${peer.id}`;
+            return peer.id;
         }
 
         function joinChat(code) {
-            if (!code || code.length !== 6) {
-                alert('Please enter a valid 6-digit code.');
-                return;
-            }
-            conn = peer.connect(code);
+            if (!code) return;
+            conn = peer.connect(code, { reliable: true });
             conn.on('open', () => {
                 setupConnection();
-                addMessage('Joined chat successfully!');
+                loadChatHistory(code);
             });
         }
 
-        // Stripe Payment Integration
-        async function createCheckoutSession() {
-            try {
-                const response = await fetch('/create-checkout-session', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ priceId: 'price_1O...' }) // Replace with your Stripe Price ID
+        function addMessage(text, peerId = peer.id) {
+            const msg = document.createElement('div');
+            msg.className = 'message';
+            msg.textContent = text;
+            elements.messages.appendChild(msg);
+            elements.messages.scrollTop = elements.messages.scrollHeight;
+            saveMessage(peerId, text);
+        }
+
+        function saveMessage(peerId, text) {
+            if (!storedMessages[peerId]) storedMessages[peerId] = [];
+            storedMessages[peerId].push({ text, timestamp: Date.now() });
+            localStorage.setItem('chatHistory', JSON.stringify(storedMessages));
+        }
+
+        function loadChatHistory(peerId) {
+            if (storedMessages[peerId]) {
+                storedMessages[peerId].forEach(msg => {
+                    addMessage(msg.text, peerId);
                 });
-                const session = await response.json();
-                const result = await stripe.redirectToCheckout({ sessionId: session.id });
-                if (result.error) throw result.error;
-            } catch (error) {
-                console.error('Stripe Error:', error);
-                alert('Payment error: ' + error.message);
+            }
+        }
+
+        // Payment Handling
+        async function checkPremium() {
+            const premiumKey = localStorage.getItem('premiumKey');
+            if (premiumKey) {
+                isPremium = true;
+                elements.paymentModal.style.display = 'none';
+            } else {
+                elements.paymentModal.style.display = 'block';
+            }
+        }
+
+        async function handleStripePayment() {
+            const response = await fetch('https://your-backend.herokuapp.com/create-checkout-session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ amount: 500 }) // $5 in cents
+            });
+            const { sessionId } = await response.json();
+            stripe.redirectToCheckout({ sessionId });
+        }
+
+        // Reset free message count daily
+        function resetMessageCount() {
+            const lastReset = localStorage.getItem('lastReset');
+            const today = new Date().toDateString();
+            if (lastReset !== today) {
+                messageCount = 0;
+                localStorage.setItem('lastReset', today);
             }
         }
 
         // Event Listeners
-        enterBtn.onclick = () => {
-            intro.style.display = 'none';
-            chatPage.style.display = 'block';
+        elements.enterBtn.onclick = () => {
+            elements.intro.style.display = 'none';
+            elements.chatPage.style.display = 'block';
+            resetMessageCount();
             checkPremium();
         };
 
-        codeBtn.onclick = () => {
-            generateCode();
+        elements.codeBtn.onclick = () => generateCode();
+
+        elements.joinBtn.onclick = () => {
+            const code = elements.codeInput.value.trim();
+            if (code) joinChat(code);
         };
 
-        joinBtn.onclick = () => {
-            const code = codeInput.value.trim();
-            joinChat(code);
-        };
-
-        sendBtn.onclick = () => {
-            const text = messageInput.value.trim();
-            if (!text) return;
+        elements.sendBtn.onclick = () => {
+            const text = elements.messageInput.value.trim();
+            if (!text || !conn) return;
             if (!isPremium && messageCount >= MAX_FREE_MESSAGES) {
-                alert('Free tier limit reached (50 messages). Upgrade to Premium!');
-                paymentModal.style.display = 'block';
+                alert('Free tier limit reached (50 messages/day). Upgrade to Premium!');
                 return;
             }
-            if (conn && conn.open) {
-                conn.send(text);
-                addMessage(`You: ${text}`);
-                messageCount++;
-            } else {
-                alert('Not connected to a peer yet.');
-            }
-            messageInput.value = '';
+            conn.send(text);
+            addMessage(`You: ${text}`);
+            messageCount++;
+            elements.messageInput.value = '';
         };
 
-        stripeBtn.onclick = () => {
-            createCheckoutSession();
+        elements.stripeBtn.onclick = handleStripePayment;
+
+        elements.closeModal.onclick = () => {
+            elements.paymentModal.style.display = 'none';
         };
 
-        // Check premium status on load
-        checkPremium();
+        // Handle Stripe redirect success
+        if (window.location.search.includes('success')) {
+            localStorage.setItem('premiumKey', 'stripe_success');
+            isPremium = true;
+            elements.paymentModal.style.display = 'none';
+            alert('Premium unlocked successfully!');
+        }
     </script>
 </body>
 </html>
