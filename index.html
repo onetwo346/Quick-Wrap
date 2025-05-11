@@ -237,6 +237,11 @@
                 box-shadow: 0 0 20px rgba(0, 194, 255, 0.3);
             }
 
+            /* Always show sidebar toggle on mobile when logged in */
+            body:not(#intro) #sidebarToggle {
+                display: flex !important;
+            }
+            
             #sidebarToggle {
                 position: fixed;
                 top: 70px;
@@ -250,7 +255,6 @@
                 cursor: pointer;
                 width: 40px;
                 height: 40px;
-                display: flex;
                 align-items: center;
                 justify-content: center;
             }
@@ -702,7 +706,7 @@
     </div>
 
 
-    <button id="sidebarToggle" style="display: none;">
+    <button id="sidebarToggle" style="display: none;" onclick="document.getElementById('sidebar').classList.toggle('active');">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="3" y1="12" x2="21" y2="12"></line>
             <line x1="3" y1="6" x2="21" y2="6"></line>
@@ -839,9 +843,15 @@
             document.getElementById('messages').style.display = 'block';
             document.getElementById('messageControls').style.display = 'flex';
             
-            // Show sidebar toggle for mobile
+            // Show sidebar toggle for mobile - force display
             const sidebarToggle = document.getElementById('sidebarToggle');
             sidebarToggle.style.display = 'flex';
+            sidebarToggle.style.visibility = 'visible';
+            
+            // Force sidebar toggle to be visible on mobile
+            if (window.innerWidth <= 768) {
+                sidebarToggle.setAttribute('style', 'display: flex !important; visibility: visible !important;');
+            }
             
             // Add initial welcome message
             document.getElementById('messages').innerHTML = '';
@@ -1408,9 +1418,16 @@
             authElements.userName.textContent = username;
         }
 
-        // Mobile sidebar toggle
+        // Mobile sidebar toggle - add a second event listener to be sure
         document.getElementById('sidebarToggle').addEventListener('click', () => {
             document.getElementById('sidebar').classList.toggle('active');
+        });
+        
+        // Check if we're on mobile and show the toggle if needed
+        window.addEventListener('resize', () => {
+            if (document.getElementById('chatPage').style.display === 'block' && window.innerWidth <= 768) {
+                document.getElementById('sidebarToggle').setAttribute('style', 'display: flex !important; visibility: visible !important;');
+            }
         });
 
         // Handle sign out
