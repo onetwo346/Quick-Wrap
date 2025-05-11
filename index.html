@@ -230,6 +230,7 @@
                 width: 80%;
                 max-width: 300px;
                 z-index: 1000;
+                transition: left 0.3s ease;
             }
 
             #sidebar.active {
@@ -706,13 +707,15 @@
     </div>
 
 
-    <button id="sidebarToggle" style="display: none;" onclick="document.getElementById('sidebar').classList.toggle('active');">
+    <button id="sidebarToggle" style="display: none;">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="3" y1="12" x2="21" y2="12"></line>
             <line x1="3" y1="6" x2="21" y2="6"></line>
             <line x1="3" y1="18" x2="21" y2="18"></line>
         </svg>
     </button>
+    
+    <div id="sidebarOverlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 999;"></div>
     
     <div id="chatPage">
         <div id="dashboardHeader">
@@ -851,6 +854,8 @@
             // Force sidebar toggle to be visible on mobile
             if (window.innerWidth <= 768) {
                 sidebarToggle.setAttribute('style', 'display: flex !important; visibility: visible !important;');
+                // Make sure the toggle function is properly set
+                sidebarToggle.onclick = toggleSidebar;
             }
             
             // Add initial welcome message
@@ -1418,10 +1423,28 @@
             authElements.userName.textContent = username;
         }
 
-        // Mobile sidebar toggle - add a second event listener to be sure
-        document.getElementById('sidebarToggle').addEventListener('click', () => {
-            document.getElementById('sidebar').classList.toggle('active');
-        });
+        // Completely rewritten mobile sidebar toggle functionality
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            
+            if (sidebar.classList.contains('active')) {
+                sidebar.classList.remove('active');
+                overlay.style.display = 'none';
+            } else {
+                sidebar.classList.add('active');
+                overlay.style.display = 'block';
+            }
+        }
+        
+        // Add click event directly
+        document.getElementById('sidebarToggle').onclick = toggleSidebar;
+        
+        // Also add with addEventListener as backup
+        document.getElementById('sidebarToggle').addEventListener('click', toggleSidebar);
+        
+        // Add overlay click to close sidebar
+        document.getElementById('sidebarOverlay').addEventListener('click', toggleSidebar);
         
         // Check if we're on mobile and show the toggle if needed
         window.addEventListener('resize', () => {
@@ -1429,6 +1452,11 @@
                 document.getElementById('sidebarToggle').setAttribute('style', 'display: flex !important; visibility: visible !important;');
             }
         });
+        
+        // Initialize for current screen size
+        if (window.innerWidth <= 768) {
+            document.getElementById('sidebarToggle').setAttribute('style', 'display: flex !important; visibility: visible !important;');
+        }
 
         // Handle sign out
         authElements.signOutBtn.addEventListener('click', () => {
