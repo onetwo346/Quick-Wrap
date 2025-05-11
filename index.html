@@ -208,16 +208,13 @@
             top: 70px;
             left: 10px;
             z-index: 1000;
-            background: rgba(0, 0, 0, 0.6);
-            border: 1px solid rgba(0, 194, 255, 0.3);
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid rgba(0, 255, 255, 0.2);
             color: #fff;
             padding: 8px;
             border-radius: 5px;
             cursor: pointer;
-            width: 40px;
-            height: 40px;
-            align-items: center;
-            justify-content: center;
+            backdrop-filter: blur(10px);
         }
 
         @media (max-width: 768px) {
@@ -230,7 +227,6 @@
                 width: 80%;
                 max-width: 300px;
                 z-index: 1000;
-                transition: left 0.3s ease;
             }
 
             #sidebar.active {
@@ -238,12 +234,8 @@
                 box-shadow: 0 0 20px rgba(0, 194, 255, 0.3);
             }
 
-            /* Always show sidebar toggle on mobile when logged in */
-            body:not(#intro) #sidebarToggle {
-                display: flex !important;
-            }
-            
             #sidebarToggle {
+                display: block;
                 position: fixed;
                 top: 70px;
                 left: 10px;
@@ -256,6 +248,7 @@
                 cursor: pointer;
                 width: 40px;
                 height: 40px;
+                display: flex;
                 align-items: center;
                 justify-content: center;
             }
@@ -677,45 +670,25 @@
                 <input type="password" id="loginPassword" placeholder="Password" required>
                 <button id="loginBtn">Login</button>
                 <p>Don't have an account? <a href="#" id="showSignup">Sign up</a></p>
-                <p>Forgot password? <a href="#" id="showRecovery">Recover account</a></p>
             </div>
             <div id="signupForm" class="auth-form" style="display: none;">
                 <h2>Sign Up</h2>
                 <input type="text" id="signupUsername" placeholder="Username" required>
                 <input type="password" id="signupPassword" placeholder="Password" required>
-                <input type="email" id="signupEmail" placeholder="Email (optional for recovery)">
                 <button id="signupBtn">Sign Up</button>
                 <p>Already have an account? <a href="#" id="showLogin">Login</a></p>
-            </div>
-            <div id="recoveryForm" class="auth-form" style="display: none;">
-                <h2>Account Recovery</h2>
-                <div id="recoveryStep1">
-                    <input type="text" id="recoveryIdentifier" placeholder="Username or Email" required>
-                    <button id="requestRecoveryBtn">Request Recovery Code</button>
-                    <p>Remember your password? <a href="#" id="cancelRecovery">Back to login</a></p>
-                </div>
-                <div id="recoveryStep2" style="display: none;">
-                    <p id="recoveryMessage" class="success-message"></p>
-                    <input type="text" id="recoveryUsername" style="display: none;">
-                    <input type="text" id="recoveryCode" placeholder="Enter 6-digit code" required>
-                    <input type="password" id="newPassword" placeholder="New Password" required>
-                    <button id="resetPasswordBtn">Reset Password</button>
-                    <p><a href="#" id="backToRecovery">Back</a></p>
-                </div>
             </div>
         </div>
     </div>
 
 
-    <button id="sidebarToggle" style="display: none;">
+    <button id="sidebarToggle">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="3" y1="12" x2="21" y2="12"></line>
             <line x1="3" y1="6" x2="21" y2="6"></line>
             <line x1="3" y1="18" x2="21" y2="18"></line>
         </svg>
     </button>
-    
-    <div id="sidebarOverlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 999;"></div>
     
     <div id="chatPage">
         <div id="dashboardHeader">
@@ -808,28 +781,14 @@
         const authElements = {
             loginForm: document.getElementById('loginForm'),
             signupForm: document.getElementById('signupForm'),
-            recoveryForm: document.getElementById('recoveryForm'),
-            recoveryStep1: document.getElementById('recoveryStep1'),
-            recoveryStep2: document.getElementById('recoveryStep2'),
             loginUsername: document.getElementById('loginUsername'),
             loginPassword: document.getElementById('loginPassword'),
             signupUsername: document.getElementById('signupUsername'),
             signupPassword: document.getElementById('signupPassword'),
-            signupEmail: document.getElementById('signupEmail'),
-            recoveryIdentifier: document.getElementById('recoveryIdentifier'),
-            recoveryUsername: document.getElementById('recoveryUsername'),
-            recoveryCode: document.getElementById('recoveryCode'),
-            newPassword: document.getElementById('newPassword'),
-            recoveryMessage: document.getElementById('recoveryMessage'),
             loginBtn: document.getElementById('loginBtn'),
             signupBtn: document.getElementById('signupBtn'),
-            requestRecoveryBtn: document.getElementById('requestRecoveryBtn'),
-            resetPasswordBtn: document.getElementById('resetPasswordBtn'),
             showLogin: document.getElementById('showLogin'),
             showSignup: document.getElementById('showSignup'),
-            showRecovery: document.getElementById('showRecovery'),
-            cancelRecovery: document.getElementById('cancelRecovery'),
-            backToRecovery: document.getElementById('backToRecovery'),
             userAvatar: document.getElementById('userAvatar'),
             userName: document.getElementById('userName'),
             signOutBtn: document.getElementById('signOutBtn')
@@ -846,17 +805,7 @@
             document.getElementById('messages').style.display = 'block';
             document.getElementById('messageControls').style.display = 'flex';
             
-            // Show sidebar toggle for mobile - force display
-            const sidebarToggle = document.getElementById('sidebarToggle');
-            sidebarToggle.style.display = 'flex';
-            sidebarToggle.style.visibility = 'visible';
-            
-            // Force sidebar toggle to be visible on mobile
-            if (window.innerWidth <= 768) {
-                sidebarToggle.setAttribute('style', 'display: flex !important; visibility: visible !important;');
-                // Make sure the toggle function is properly set
-                sidebarToggle.onclick = toggleSidebar;
-            }
+
             
             // Add initial welcome message
             document.getElementById('messages').innerHTML = '';
@@ -1275,35 +1224,13 @@
         authElements.showSignup.addEventListener('click', (e) => {
             e.preventDefault();
             authElements.loginForm.style.display = 'none';
-            authElements.recoveryForm.style.display = 'none';
             authElements.signupForm.style.display = 'flex';
         });
 
         authElements.showLogin.addEventListener('click', (e) => {
             e.preventDefault();
             authElements.signupForm.style.display = 'none';
-            authElements.recoveryForm.style.display = 'none';
             authElements.loginForm.style.display = 'flex';
-        });
-        
-        authElements.showRecovery.addEventListener('click', (e) => {
-            e.preventDefault();
-            authElements.loginForm.style.display = 'none';
-            authElements.recoveryForm.style.display = 'flex';
-            authElements.recoveryStep1.style.display = 'block';
-            authElements.recoveryStep2.style.display = 'none';
-        });
-        
-        authElements.cancelRecovery.addEventListener('click', (e) => {
-            e.preventDefault();
-            authElements.recoveryForm.style.display = 'none';
-            authElements.loginForm.style.display = 'flex';
-        });
-        
-        authElements.backToRecovery.addEventListener('click', (e) => {
-            e.preventDefault();
-            authElements.recoveryStep2.style.display = 'none';
-            authElements.recoveryStep1.style.display = 'block';
         });
 
         // Handle Login
@@ -1339,11 +1266,10 @@
         authElements.signupBtn.addEventListener('click', () => {
             const username = authElements.signupUsername.value.trim();
             const password = authElements.signupPassword.value.trim();
-            const email = authElements.signupEmail.value.trim();
 
             try {
                 if (!username || !password) {
-                    throw new Error('Please fill in all required fields');
+                    throw new Error('Please fill in all fields');
                 }
                 if (username.length < 3) {
                     throw new Error('Username must be at least 3 characters');
@@ -1351,7 +1277,7 @@
                 if (password.length < 6) {
                     throw new Error('Password must be at least 6 characters');
                 }
-                Auth.register(username, password, email);
+                Auth.register(username, password);
                 Auth.setCurrentUser(username);
                 setupDashboard(username);
                 elements.intro.style.display = 'none';
@@ -1360,7 +1286,6 @@
                 // Clear form
                 authElements.signupUsername.value = '';
                 authElements.signupPassword.value = '';
-                authElements.signupEmail.value = '';
             } catch (error) {
                 alert(error.message);
             }
@@ -1423,40 +1348,10 @@
             authElements.userName.textContent = username;
         }
 
-        // Completely rewritten mobile sidebar toggle functionality
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const overlay = document.getElementById('sidebarOverlay');
-            
-            if (sidebar.classList.contains('active')) {
-                sidebar.classList.remove('active');
-                overlay.style.display = 'none';
-            } else {
-                sidebar.classList.add('active');
-                overlay.style.display = 'block';
-            }
-        }
-        
-        // Add click event directly
-        document.getElementById('sidebarToggle').onclick = toggleSidebar;
-        
-        // Also add with addEventListener as backup
-        document.getElementById('sidebarToggle').addEventListener('click', toggleSidebar);
-        
-        // Add overlay click to close sidebar
-        document.getElementById('sidebarOverlay').addEventListener('click', toggleSidebar);
-        
-        // Check if we're on mobile and show the toggle if needed
-        window.addEventListener('resize', () => {
-            if (document.getElementById('chatPage').style.display === 'block' && window.innerWidth <= 768) {
-                document.getElementById('sidebarToggle').setAttribute('style', 'display: flex !important; visibility: visible !important;');
-            }
+        // Mobile sidebar toggle
+        document.getElementById('sidebarToggle').addEventListener('click', () => {
+            document.getElementById('sidebar').classList.toggle('active');
         });
-        
-        // Initialize for current screen size
-        if (window.innerWidth <= 768) {
-            document.getElementById('sidebarToggle').setAttribute('style', 'display: flex !important; visibility: visible !important;');
-        }
 
         // Handle sign out
         authElements.signOutBtn.addEventListener('click', () => {
@@ -1469,9 +1364,6 @@
             authElements.loginUsername.value = '';
             authElements.loginPassword.value = '';
             elements.messages.innerHTML = '';
-            
-            // Hide sidebar toggle when logging out
-            document.getElementById('sidebarToggle').style.display = 'none';
         });
     </script>
 </body>
