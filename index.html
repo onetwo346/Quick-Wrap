@@ -670,19 +670,37 @@
                 <input type="password" id="loginPassword" placeholder="Password" required>
                 <button id="loginBtn">Login</button>
                 <p>Don't have an account? <a href="#" id="showSignup">Sign up</a></p>
+                <p>Forgot password? <a href="#" id="showRecovery">Recover account</a></p>
             </div>
             <div id="signupForm" class="auth-form" style="display: none;">
                 <h2>Sign Up</h2>
                 <input type="text" id="signupUsername" placeholder="Username" required>
                 <input type="password" id="signupPassword" placeholder="Password" required>
+                <input type="email" id="signupEmail" placeholder="Email (optional for recovery)">
                 <button id="signupBtn">Sign Up</button>
                 <p>Already have an account? <a href="#" id="showLogin">Login</a></p>
+            </div>
+            <div id="recoveryForm" class="auth-form" style="display: none;">
+                <h2>Account Recovery</h2>
+                <div id="recoveryStep1">
+                    <input type="text" id="recoveryIdentifier" placeholder="Username or Email" required>
+                    <button id="requestRecoveryBtn">Request Recovery Code</button>
+                    <p>Remember your password? <a href="#" id="cancelRecovery">Back to login</a></p>
+                </div>
+                <div id="recoveryStep2" style="display: none;">
+                    <p id="recoveryMessage" class="success-message"></p>
+                    <input type="text" id="recoveryUsername" style="display: none;">
+                    <input type="text" id="recoveryCode" placeholder="Enter 6-digit code" required>
+                    <input type="password" id="newPassword" placeholder="New Password" required>
+                    <button id="resetPasswordBtn">Reset Password</button>
+                    <p><a href="#" id="backToRecovery">Back</a></p>
+                </div>
             </div>
         </div>
     </div>
 
 
-    <button id="sidebarToggle">
+    <button id="sidebarToggle" style="display: none;">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="3" y1="12" x2="21" y2="12"></line>
             <line x1="3" y1="6" x2="21" y2="6"></line>
@@ -781,14 +799,28 @@
         const authElements = {
             loginForm: document.getElementById('loginForm'),
             signupForm: document.getElementById('signupForm'),
+            recoveryForm: document.getElementById('recoveryForm'),
+            recoveryStep1: document.getElementById('recoveryStep1'),
+            recoveryStep2: document.getElementById('recoveryStep2'),
             loginUsername: document.getElementById('loginUsername'),
             loginPassword: document.getElementById('loginPassword'),
             signupUsername: document.getElementById('signupUsername'),
             signupPassword: document.getElementById('signupPassword'),
+            signupEmail: document.getElementById('signupEmail'),
+            recoveryIdentifier: document.getElementById('recoveryIdentifier'),
+            recoveryUsername: document.getElementById('recoveryUsername'),
+            recoveryCode: document.getElementById('recoveryCode'),
+            newPassword: document.getElementById('newPassword'),
+            recoveryMessage: document.getElementById('recoveryMessage'),
             loginBtn: document.getElementById('loginBtn'),
             signupBtn: document.getElementById('signupBtn'),
+            requestRecoveryBtn: document.getElementById('requestRecoveryBtn'),
+            resetPasswordBtn: document.getElementById('resetPasswordBtn'),
             showLogin: document.getElementById('showLogin'),
             showSignup: document.getElementById('showSignup'),
+            showRecovery: document.getElementById('showRecovery'),
+            cancelRecovery: document.getElementById('cancelRecovery'),
+            backToRecovery: document.getElementById('backToRecovery'),
             userAvatar: document.getElementById('userAvatar'),
             userName: document.getElementById('userName'),
             signOutBtn: document.getElementById('signOutBtn')
@@ -805,7 +837,8 @@
             document.getElementById('messages').style.display = 'block';
             document.getElementById('messageControls').style.display = 'flex';
             
-
+            // Show sidebar toggle for mobile
+            document.getElementById('sidebarToggle').style.display = 'flex';
             
             // Add initial welcome message
             document.getElementById('messages').innerHTML = '';
@@ -1224,13 +1257,35 @@
         authElements.showSignup.addEventListener('click', (e) => {
             e.preventDefault();
             authElements.loginForm.style.display = 'none';
+            authElements.recoveryForm.style.display = 'none';
             authElements.signupForm.style.display = 'flex';
         });
 
         authElements.showLogin.addEventListener('click', (e) => {
             e.preventDefault();
             authElements.signupForm.style.display = 'none';
+            authElements.recoveryForm.style.display = 'none';
             authElements.loginForm.style.display = 'flex';
+        });
+        
+        authElements.showRecovery.addEventListener('click', (e) => {
+            e.preventDefault();
+            authElements.loginForm.style.display = 'none';
+            authElements.recoveryForm.style.display = 'flex';
+            authElements.recoveryStep1.style.display = 'block';
+            authElements.recoveryStep2.style.display = 'none';
+        });
+        
+        authElements.cancelRecovery.addEventListener('click', (e) => {
+            e.preventDefault();
+            authElements.recoveryForm.style.display = 'none';
+            authElements.loginForm.style.display = 'flex';
+        });
+        
+        authElements.backToRecovery.addEventListener('click', (e) => {
+            e.preventDefault();
+            authElements.recoveryStep2.style.display = 'none';
+            authElements.recoveryStep1.style.display = 'block';
         });
 
         // Handle Login
@@ -1266,10 +1321,11 @@
         authElements.signupBtn.addEventListener('click', () => {
             const username = authElements.signupUsername.value.trim();
             const password = authElements.signupPassword.value.trim();
+            const email = authElements.signupEmail.value.trim();
 
             try {
                 if (!username || !password) {
-                    throw new Error('Please fill in all fields');
+                    throw new Error('Please fill in all required fields');
                 }
                 if (username.length < 3) {
                     throw new Error('Username must be at least 3 characters');
@@ -1277,7 +1333,7 @@
                 if (password.length < 6) {
                     throw new Error('Password must be at least 6 characters');
                 }
-                Auth.register(username, password);
+                Auth.register(username, password, email);
                 Auth.setCurrentUser(username);
                 setupDashboard(username);
                 elements.intro.style.display = 'none';
@@ -1286,6 +1342,7 @@
                 // Clear form
                 authElements.signupUsername.value = '';
                 authElements.signupPassword.value = '';
+                authElements.signupEmail.value = '';
             } catch (error) {
                 alert(error.message);
             }
@@ -1364,6 +1421,9 @@
             authElements.loginUsername.value = '';
             authElements.loginPassword.value = '';
             elements.messages.innerHTML = '';
+            
+            // Hide sidebar toggle when logging out
+            document.getElementById('sidebarToggle').style.display = 'none';
         });
     </script>
 </body>
