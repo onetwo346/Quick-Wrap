@@ -208,13 +208,16 @@
             top: 70px;
             left: 10px;
             z-index: 1000;
-            background: rgba(0, 0, 0, 0.8);
-            border: 1px solid rgba(0, 255, 255, 0.2);
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(0, 194, 255, 0.3);
             color: #fff;
             padding: 8px;
             border-radius: 5px;
             cursor: pointer;
-            backdrop-filter: blur(10px);
+            width: 40px;
+            height: 40px;
+            align-items: center;
+            justify-content: center;
         }
 
         @media (max-width: 768px) {
@@ -235,7 +238,6 @@
             }
 
             #sidebarToggle {
-                display: block;
                 position: fixed;
                 top: 70px;
                 left: 10px;
@@ -838,7 +840,8 @@
             document.getElementById('messageControls').style.display = 'flex';
             
             // Show sidebar toggle for mobile
-            document.getElementById('sidebarToggle').style.display = 'flex';
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            sidebarToggle.style.display = 'flex';
             
             // Add initial welcome message
             document.getElementById('messages').innerHTML = '';
