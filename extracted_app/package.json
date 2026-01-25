@@ -1,0 +1,7 @@
+{
+  "name": "quick-wrap",
+  "version": "1.2.0",
+  "description": "Quick Wrap desktop/mobile wrapper",
+  "private": true,
+  "main": "electron/main.cjs"
+}
