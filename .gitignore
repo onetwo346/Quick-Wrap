@@ -22,5 +22,6 @@ build/
 .env
 .env.local
 
-# Executable files (too large for GitHub)
+# Executable files (exclude all except the setup installer)
 *.exe
+!Quick Wrap Setup 1.2.0.exe
