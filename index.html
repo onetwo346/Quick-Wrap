@@ -439,6 +439,23 @@
             cursor: pointer;
             backdrop-filter: blur(10px);
         }
+        /* Sidebar overlay for mobile */
+        #sidebarOverlay {
+            display: none;
+            position: fixed;
+            top: 60px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        #sidebarOverlay.active {
+            display: block;
+            opacity: 1;
+        }
         @media (max-width: 768px) {
             #sidebar {
                 position: fixed;
@@ -450,6 +467,7 @@
                 max-width: 300px;
                 z-index: 1000;
                 transform: translateX(calc(-100% - 1px));
+                transition: transform 0.3s ease;
             }
             #sidebar.active {
                 transform: translateX(0);
@@ -2812,6 +2830,7 @@
     </div>
 
     <div id="chatPage">
+        <div id="sidebarOverlay"></div>
         <button id="sidebarToggle">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="3" y1="12" x2="21" y2="12"></line>
@@ -4539,9 +4558,42 @@
         }
 
         // Mobile sidebar toggle
-        document.getElementById('sidebarToggle').addEventListener('click', () => {
-            document.getElementById('sidebar').classList.toggle('active');
-        });
+        const sidebar = document.getElementById('sidebar');
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
+        
+        function toggleSidebar() {
+            sidebar.classList.toggle('active');
+            sidebarOverlay.classList.toggle('active');
+        }
+        
+        function closeSidebar() {
+            sidebar.classList.remove('active');
+            sidebarOverlay.classList.remove('active');
+        }
+        
+        sidebarToggle.addEventListener('click', toggleSidebar);
+        sidebarOverlay.addEventListener('click', closeSidebar);
+        
+        // Close sidebar on swipe left (mobile)
+        let sidebarTouchStartX = 0;
+        let sidebarTouchEndX = 0;
+        
+        sidebar.addEventListener('touchstart', (e) => {
+            sidebarTouchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+        
+        sidebar.addEventListener('touchend', (e) => {
+            sidebarTouchEndX = e.changedTouches[0].screenX;
+            handleSidebarSwipe();
+        }, { passive: true });
+        
+        function handleSidebarSwipe() {
+            if (sidebarTouchStartX - sidebarTouchEndX > 50) {
+                // Swiped left
+                closeSidebar();
+            }
+        }
 
         // Handle sign out
         authElements.signOutBtn.addEventListener('click', () => {
