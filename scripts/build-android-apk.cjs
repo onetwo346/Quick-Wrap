@@ -9,7 +9,9 @@ try {
     process.chdir(androidDir);
     
     console.log('Running Gradle build...');
-    execSync('./gradlew assembleDebug', { stdio: 'inherit' });
+    const isWindows = process.platform === 'win32';
+    const gradleCmd = isWindows ? 'gradlew.bat assembleDebug' : './gradlew assembleDebug';
+    execSync(gradleCmd, { stdio: 'inherit' });
     
     console.log('\n✅ APK built successfully!');
     console.log('Location: android/app/build/outputs/apk/debug/app-debug.apk');

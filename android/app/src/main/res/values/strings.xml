@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Quick Wrap</string>
+    <string name="title_activity_main">Quick Wrap</string>
+    <string name="package_name">com.quickwrap.app</string>
+    <string name="custom_url_scheme">com.quickwrap.app</string>
+</resources>
