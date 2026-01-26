@@ -69,15 +69,19 @@
         .intro-left {
             align-self: flex-start;
         }
-        /* Hide download section in desktop app */
+        /* Hide download section in desktop app and mobile app */
         .is-desktop-app .intro-left,
-        .is-desktop-app .download-section {
+        .is-desktop-app .download-section,
+        .is-mobile-app .intro-left,
+        .is-mobile-app .download-section {
             display: none !important;
         }
-        .is-desktop-app .intro-main {
+        .is-desktop-app .intro-main,
+        .is-mobile-app .intro-main {
             justify-content: center;
         }
-        .is-desktop-app .intro-right {
+        .is-desktop-app .intro-right,
+        .is-mobile-app .intro-right {
             flex: none;
             max-width: 400px;
         }
@@ -517,24 +521,18 @@
         }
         @media (max-width: 768px) {
             #sidebar {
-                position: fixed;
-                left: 0;
-                top: 60px;
-                height: calc(100% - 60px);
-                backdrop-filter: blur(10px);
-                width: 80%;
-                max-width: 300px;
-                z-index: 1000;
-                transform: translateX(calc(-100% - 1px));
-                transition: transform 0.3s ease;
+                position: relative;
+                width: 200px;
+                height: 100%;
+                transform: none;
+                transition: none;
+                font-size: 0.85rem;
             }
             #sidebar.active {
-                transform: translateX(0);
-                box-shadow: 0 0 30px rgba(124, 58, 237, 0.3);
+                transform: none;
             }
             #sidebarToggle {
-                display: block;
-                position: fixed;
+                display: none;
                 top: 70px;
                 left: 10px;
                 z-index: 1000;
@@ -568,6 +566,88 @@
             }
             #dashboardHeader {
                 padding: 0 15px;
+                height: 50px;
+                font-size: 0.9rem;
+            }
+            #userAvatar {
+                width: 28px;
+                height: 28px;
+                font-size: 0.75rem;
+            }
+            #userName {
+                font-size: 0.9rem;
+            }
+            .header-btn {
+                padding: 6px;
+            }
+            .header-btn svg {
+                width: 16px;
+                height: 16px;
+            }
+            .chat-container {
+                margin-top: 50px;
+                height: calc(100% - 50px);
+            }
+            .my-number-display {
+                padding: 10px;
+                font-size: 0.75rem;
+            }
+            .status-box {
+                padding: 10px;
+                font-size: 0.8rem;
+            }
+            .home-btn {
+                padding: 8px 12px;
+                font-size: 0.8rem;
+            }
+            .chat-list h3 {
+                font-size: 0.85rem;
+            }
+            .chat-item {
+                padding: 8px;
+            }
+            .chat-avatar {
+                width: 32px;
+                height: 32px;
+                font-size: 0.8rem;
+            }
+            .chat-name {
+                font-size: 0.85rem;
+            }
+            .chat-preview {
+                font-size: 0.7rem;
+            }
+            .chat-header {
+                padding: 10px 15px;
+            }
+            .chat-header .peer-avatar {
+                width: 32px;
+                height: 32px;
+                font-size: 0.8rem;
+            }
+            .chat-header .peer-name {
+                font-size: 0.9rem;
+            }
+            .chat-header .peer-status {
+                font-size: 0.75rem;
+            }
+            .message {
+                padding: 8px 12px;
+                font-size: 0.85rem;
+                max-width: 80%;
+            }
+            #messageInput {
+                font-size: 0.85rem;
+            }
+            .btn {
+                padding: 8px 14px;
+                font-size: 0.85rem;
+            }
+            .empty-state-title {
+                font-size: 1.1rem;
+            }
+            .empty-state-subtitle {
+                font-size: 0.85rem;
             }
         }
         .connection-setup {
@@ -2809,8 +2889,14 @@
     </style>
 </head>
 <body>
+    <script>
+        // Detect if running in Capacitor (mobile app) and hide download section
+        if (window.Capacitor || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+            document.body.classList.add('is-mobile-app');
+        }
+    </script>
     <div id="intro">
-        <img class="intro-logo" src="24E694E8-F40A-46B0-8809-DED26FF7E3CE (1).png" alt="Quick Wrap logo">
+        <img class="intro-logo" src="logo.png" alt="Quick Wrap logo">
         <h1>Quick Wrap: Simple TEXT Chat</h1>
         <div class="privacy-badge">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

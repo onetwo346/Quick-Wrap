@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=5.0, user-scalable=yes">
     <title>Quick Wrap - Simple P2P Chat</title>
     <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
@@ -69,30 +69,93 @@
         .intro-left {
             align-self: flex-start;
         }
-        /* Hide download section in desktop app */
+        /* Hide download section in desktop app and mobile app */
         .is-desktop-app .intro-left,
-        .is-desktop-app .download-section {
+        .is-desktop-app .download-section,
+        .is-mobile-app .intro-left,
+        .is-mobile-app .download-section {
             display: none !important;
         }
-        .is-desktop-app .intro-main {
+        .is-desktop-app .intro-main,
+        .is-mobile-app .intro-main {
             justify-content: center;
         }
-        .is-desktop-app .intro-right {
+        .is-desktop-app .intro-right,
+        .is-mobile-app .intro-right {
             flex: none;
             max-width: 400px;
         }
 
         @media (max-width: 768px) {
+            body {
+                overflow-y: auto;
+                align-items: flex-start;
+                padding-top: 10px;
+                padding-bottom: 20px;
+            }
             #intro {
-                max-width: 400px;
+                max-width: 92vw;
+                padding: 16px;
+                margin: 10px auto;
+                transform: none;
             }
             .intro-main {
                 flex-direction: column;
-                gap: 16px;
+                gap: 12px;
             }
             .intro-left,
             .intro-right {
                 min-width: 0;
+                width: 100%;
+            }
+            .intro-logo {
+                width: 80px;
+                margin-bottom: 8px;
+            }
+            #intro h1 {
+                font-size: 1.4rem;
+            }
+            .privacy-badge {
+                padding: 6px 12px;
+                font-size: 0.75rem;
+            }
+            .intro-panel {
+                padding: 16px;
+            }
+            .download-section h3 {
+                font-size: 0.75rem;
+            }
+            .download-btn {
+                padding: 10px 16px;
+                gap: 10px;
+            }
+            .download-btn svg {
+                width: 22px;
+                height: 22px;
+            }
+            .download-btn .btn-label {
+                font-size: 0.6rem;
+            }
+            .download-btn .btn-platform {
+                font-size: 0.9rem;
+            }
+            .download-info {
+                font-size: 0.65rem;
+                gap: 8px;
+            }
+            .auth-form h2 {
+                font-size: 1.2rem;
+            }
+            .auth-form input {
+                padding: 10px 14px;
+                font-size: 0.9rem;
+            }
+            .auth-form button {
+                padding: 10px;
+                font-size: 0.9rem;
+            }
+            .auth-form p {
+                font-size: 0.8rem;
             }
         }
         #intro h1 {
@@ -458,24 +521,18 @@
         }
         @media (max-width: 768px) {
             #sidebar {
-                position: fixed;
-                left: 0;
-                top: 60px;
-                height: calc(100% - 60px);
-                backdrop-filter: blur(10px);
-                width: 80%;
-                max-width: 300px;
-                z-index: 1000;
-                transform: translateX(calc(-100% - 1px));
-                transition: transform 0.3s ease;
+                position: relative;
+                width: 200px;
+                height: 100%;
+                transform: none;
+                transition: none;
+                font-size: 0.85rem;
             }
             #sidebar.active {
-                transform: translateX(0);
-                box-shadow: 0 0 30px rgba(124, 58, 237, 0.3);
+                transform: none;
             }
             #sidebarToggle {
-                display: block;
-                position: fixed;
+                display: none;
                 top: 70px;
                 left: 10px;
                 z-index: 1000;
@@ -509,6 +566,88 @@
             }
             #dashboardHeader {
                 padding: 0 15px;
+                height: 50px;
+                font-size: 0.9rem;
+            }
+            #userAvatar {
+                width: 28px;
+                height: 28px;
+                font-size: 0.75rem;
+            }
+            #userName {
+                font-size: 0.9rem;
+            }
+            .header-btn {
+                padding: 6px;
+            }
+            .header-btn svg {
+                width: 16px;
+                height: 16px;
+            }
+            .chat-container {
+                margin-top: 50px;
+                height: calc(100% - 50px);
+            }
+            .my-number-display {
+                padding: 10px;
+                font-size: 0.75rem;
+            }
+            .status-box {
+                padding: 10px;
+                font-size: 0.8rem;
+            }
+            .home-btn {
+                padding: 8px 12px;
+                font-size: 0.8rem;
+            }
+            .chat-list h3 {
+                font-size: 0.85rem;
+            }
+            .chat-item {
+                padding: 8px;
+            }
+            .chat-avatar {
+                width: 32px;
+                height: 32px;
+                font-size: 0.8rem;
+            }
+            .chat-name {
+                font-size: 0.85rem;
+            }
+            .chat-preview {
+                font-size: 0.7rem;
+            }
+            .chat-header {
+                padding: 10px 15px;
+            }
+            .chat-header .peer-avatar {
+                width: 32px;
+                height: 32px;
+                font-size: 0.8rem;
+            }
+            .chat-header .peer-name {
+                font-size: 0.9rem;
+            }
+            .chat-header .peer-status {
+                font-size: 0.75rem;
+            }
+            .message {
+                padding: 8px 12px;
+                font-size: 0.85rem;
+                max-width: 80%;
+            }
+            #messageInput {
+                font-size: 0.85rem;
+            }
+            .btn {
+                padding: 8px 14px;
+                font-size: 0.85rem;
+            }
+            .empty-state-title {
+                font-size: 1.1rem;
+            }
+            .empty-state-subtitle {
+                font-size: 0.85rem;
             }
         }
         .connection-setup {
@@ -2750,8 +2889,14 @@
     </style>
 </head>
 <body>
+    <script>
+        // Detect if running in Capacitor (mobile app) and hide download section
+        if (window.Capacitor || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+            document.body.classList.add('is-mobile-app');
+        }
+    </script>
     <div id="intro">
-        <img class="intro-logo" src="24E694E8-F40A-46B0-8809-DED26FF7E3CE (1).png" alt="Quick Wrap logo">
+        <img class="intro-logo" src="logo.png" alt="Quick Wrap logo">
         <h1>Quick Wrap: Simple TEXT Chat</h1>
         <div class="privacy-badge">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -2771,7 +2916,7 @@
                             <polyline points="7 10 12 15 17 10"></polyline>
                             <line x1="12" y1="15" x2="12" y2="3"></line>
                         </svg>
-                        Get the Desktop App
+                        Download the App
                     </h3>
                     <a href="https://github.com/onetwo346/Quick-Wrap/releases/download/v1.2.0/Quick-Wrap-Setup.exe" class="download-btn">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
@@ -2782,6 +2927,15 @@
                             <span class="btn-platform">Windows</span>
                         </span>
                     </a>
+                    <a href="Quick-Wrap.apk" class="download-btn" style="margin-top: 12px;">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M17.6,9.48l1.84-3.18c0.16-0.31,0.04-0.69-0.26-0.85c-0.29-0.15-0.65-0.06-0.83,0.22l-1.88,3.24 c-2.86-1.21-6.08-1.21-8.94,0L5.65,5.67c-0.19-0.29-0.58-0.38-0.87-0.2C4.5,5.65,4.41,6.01,4.56,6.3L6.4,9.48 C3.3,11.25,1.28,14.44,1,18h22C22.72,14.44,20.7,11.25,17.6,9.48z M7,15.25c-0.69,0-1.25-0.56-1.25-1.25 c0-0.69,0.56-1.25,1.25-1.25S8.25,13.31,8.25,14C8.25,14.69,7.69,15.25,7,15.25z M17,15.25c-0.69,0-1.25-0.56-1.25-1.25 c0-0.69,0.56-1.25,1.25-1.25s1.25,0.56,1.25,1.25C18.25,14.69,17.69,15.25,17,15.25z"/>
+                        </svg>
+                        <span class="btn-text">
+                            <span class="btn-label">Download for</span>
+                            <span class="btn-platform">Android</span>
+                        </span>
+                    </a>
                     <div class="download-info">
                         <span>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
@@ -2789,11 +2943,7 @@
                         </span>
                         <span>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-                            Windows 10/11
-                        </span>
-                        <span>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                            168 MB
+                            Windows & Android
                         </span>
                     </div>
                 </div>
@@ -2969,7 +3119,7 @@
                     <div id="status">Connecting...</div>
                 </div>
                 
-                <button id="homeBtn" class="home-btn" onclick="showHomeView()" title="Home">
+                <button id="homeBtn" class="home-btn" onclick="showHomeView(); closeSidebar();" title="Home">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
                         <polyline points="9 22 9 12 15 12 15 22"></polyline>
@@ -2980,7 +3130,7 @@
                 <div class="chat-list">
                     <div class="chat-list-header">
                         <h3>Chats</h3>
-                        <button class="new-chat-btn" onclick="showDialer()">+ New</button>
+                        <button class="new-chat-btn" onclick="showDialer(); closeSidebar();">+ New</button>
                     </div>
                     <div id="chatsList">
                         <div class="empty-chats">
