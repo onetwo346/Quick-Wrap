@@ -2890,8 +2890,9 @@
 </head>
 <body>
     <script>
-        // Detect if running in Capacitor (mobile app) and hide download section
-        if (window.Capacitor || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+        // Detect if running in Capacitor (Android/iOS app) and hide download section
+        // Only hide in the actual app, NOT in mobile browsers
+        if (window.Capacitor) {
             document.body.classList.add('is-mobile-app');
         }
     </script>
