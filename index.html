@@ -570,38 +570,6 @@
                 padding: 0 15px;
             }
         }
-        .connection-setup {
-            padding: 20px;
-            background: linear-gradient(135deg, rgba(124, 58, 237, 0.12) 0%, rgba(168, 85, 247, 0.08) 100%);
-            border-radius: 16px;
-            margin-bottom: 15px;
-            border: 1px solid rgba(124, 58, 237, 0.25);
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-        }
-        .connection-setup h3 {
-            margin: 0 0 18px;
-            color: #fff;
-            font-size: 1.1rem;
-            text-align: center;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-        .connection-setup h3::before {
-            content: '';
-            width: 8px;
-            height: 8px;
-            background: linear-gradient(135deg, #a78bfa, #ec4899);
-            border-radius: 50%;
-            box-shadow: 0 0 10px rgba(167, 139, 250, 0.5);
-        }
-        .setup-options {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
         .option-card {
             background: rgba(0, 0, 0, 0.25);
             padding: 15px;
@@ -1978,6 +1946,184 @@
             border-radius: 50%;
             animation: pulse 1s infinite;
         }
+        /* ============ START A CHAT INTERFACE ============ */
+        .start-chat-interface {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            padding: 40px 20px;
+            animation: fadeIn 0.5s ease;
+        }
+        .start-chat-card {
+            background: linear-gradient(145deg, rgba(15, 12, 41, 0.95) 0%, rgba(48, 43, 99, 0.9) 50%, rgba(36, 36, 62, 0.95) 100%);
+            backdrop-filter: blur(30px);
+            border-radius: 32px;
+            padding: 48px 40px;
+            max-width: 480px;
+            width: 100%;
+            border: 1px solid rgba(124, 58, 237, 0.3);
+            box-shadow: 
+                0 30px 90px rgba(0, 0, 0, 0.6),
+                0 0 120px rgba(124, 58, 237, 0.15),
+                inset 0 1px 0 rgba(255, 255, 255, 0.08);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .start-chat-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: conic-gradient(from 0deg, transparent, rgba(124, 58, 237, 0.08), transparent 30%);
+            animation: shimmer 8s linear infinite;
+            pointer-events: none;
+        }
+        .start-chat-card > * {
+            position: relative;
+            z-index: 1;
+        }
+        .start-chat-icon {
+            font-size: 4rem;
+            margin-bottom: 24px;
+            display: inline-block;
+            animation: float 3s ease-in-out infinite;
+            filter: drop-shadow(0 8px 24px rgba(124, 58, 237, 0.4));
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        .start-chat-title {
+            margin: 0 0 32px 0;
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #a78bfa 0%, #ec4899 50%, #06b6d4 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            filter: drop-shadow(0 2px 12px rgba(167, 139, 250, 0.3));
+            letter-spacing: -0.5px;
+        }
+        .start-chat-input {
+            width: 100%;
+            padding: 18px 24px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 2px solid rgba(124, 58, 237, 0.25);
+            border-radius: 16px;
+            color: #fff;
+            font-size: 1.1rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-sizing: border-box;
+            margin-bottom: 24px;
+            font-family: 'Exo 2', sans-serif;
+            text-align: center;
+            letter-spacing: 0.5px;
+        }
+        .start-chat-input::placeholder {
+            color: rgba(255, 255, 255, 0.35);
+        }
+        .start-chat-input:focus {
+            outline: none;
+            border-color: #a78bfa;
+            background: rgba(124, 58, 237, 0.12);
+            box-shadow: 
+                0 0 0 4px rgba(124, 58, 237, 0.1),
+                0 8px 32px rgba(124, 58, 237, 0.25);
+            transform: translateY(-2px);
+        }
+        .start-chat-buttons {
+            display: flex;
+            gap: 16px;
+            margin-top: 24px;
+        }
+        .start-chat-btn {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 16px 24px;
+            border-radius: 14px;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: none;
+            position: relative;
+            overflow: hidden;
+        }
+        .start-chat-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s ease;
+        }
+        .start-chat-btn:hover::before {
+            left: 100%;
+        }
+        .start-chat-btn.call-btn {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: #fff;
+            box-shadow: 0 6px 24px rgba(16, 185, 129, 0.35);
+        }
+        .start-chat-btn.call-btn:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 10px 32px rgba(16, 185, 129, 0.45);
+        }
+        .start-chat-btn.call-btn:active {
+            transform: translateY(-1px) scale(0.98);
+        }
+        .start-chat-btn.text-btn {
+            background: linear-gradient(135deg, rgba(124, 58, 237, 0.85) 0%, rgba(168, 85, 247, 0.75) 100%);
+            color: #fff;
+            border: 1px solid rgba(167, 139, 250, 0.3);
+            box-shadow: 0 6px 24px rgba(124, 58, 237, 0.35);
+        }
+        .start-chat-btn.text-btn:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 10px 32px rgba(124, 58, 237, 0.45);
+            background: linear-gradient(135deg, rgba(124, 58, 237, 0.95) 0%, rgba(168, 85, 247, 0.85) 100%);
+        }
+        .start-chat-btn.text-btn:active {
+            transform: translateY(-1px) scale(0.98);
+        }
+        .start-chat-btn svg {
+            stroke: currentColor;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+        }
+        @media (max-width: 768px) {
+            .start-chat-card {
+                padding: 36px 28px;
+                border-radius: 24px;
+            }
+            .start-chat-icon {
+                font-size: 3rem;
+                margin-bottom: 20px;
+            }
+            .start-chat-title {
+                font-size: 1.6rem;
+                margin-bottom: 24px;
+            }
+            .start-chat-input {
+                padding: 16px 20px;
+                font-size: 1rem;
+            }
+            .start-chat-buttons {
+                flex-direction: column;
+                gap: 12px;
+            }
+            .start-chat-btn {
+                padding: 14px 20px;
+            }
+        }
         /* ============ READ RECEIPTS ============ */
         .message-status {
             display: inline-flex;
@@ -2825,28 +2971,6 @@
                     <div class="number" id="myPhoneNumber">Loading...</div>
                     <div class="number-raw" id="myPhoneRaw"></div>
                 </div>
-                <div class="connection-setup" style="display: none;">
-                    <h3>Start a Chat</h3>
-                    <div class="setup-options">
-                        <div class="option-card">
-                            <input type="tel" id="dialInput" placeholder="Enter phone number to dial...">
-                            <div class="dial-buttons">
-                                <button id="dialBtn" class="btn primary">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
-                                    </svg>
-                                    Call
-                                </button>
-                                <button id="textBtn" class="btn secondary">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                                    </svg>
-                                    Text
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
                 <div class="status-box">
                     <div id="onlineStatus" class="status-indicator">
                         <span class="status-dot"></span>
@@ -2957,6 +3081,39 @@
                     <div class="empty-state-hint">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M5 12h14M12 5l7 7-7 7"></path>
+                        </svg>
+                        <span>Select a chat or dial a number to begin</span>
+                    </div>
+                </div>
+                
+                <!-- Start a Chat Interface (appears in main chat window) -->
+                <div class="start-chat-interface" id="startChatInterface" style="display: none;">
+                    <div class="start-chat-card">
+                        <div class="start-chat-icon">💬</div>
+                        <h2 class="start-chat-title">Start a Chat</h2>
+                        <input type="tel" id="mainDialInput" class="start-chat-input" placeholder="Enter phone number to dial...">
+                        <div class="start-chat-buttons">
+                            <button id="mainCallBtn" class="start-chat-btn call-btn">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                                </svg>
+                                Call
+                            </button>
+                            <button id="mainTextBtn" class="start-chat-btn text-btn">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                                </svg>
+                                Text
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="messages"></div>
+                <div class="typing-indicator" id="typingIndicator">
+                    <div class="typing-dots">
+                        <span></span><span></span><span></span>
+                    </div>
                     <span>typing...</span>
                 </div>
                 <!-- Reply Preview -->
@@ -3147,6 +3304,68 @@
         let contextMenuTarget = null;
         let contextMenuMsgId = null;
         
+        // ============ CRITICAL FUNCTIONS (must be defined early for onclick handlers) ============
+        function closeSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const sidebarOverlay = document.getElementById('sidebarOverlay');
+            if (sidebar) sidebar.classList.remove('active');
+            if (sidebarOverlay) sidebarOverlay.classList.remove('active');
+        }
+        
+        function showDialer() {
+            const emptyState = document.getElementById('chatEmptyState');
+            if (emptyState) emptyState.classList.add('hidden');
+            const messages = document.getElementById('messages');
+            if (messages) messages.style.display = 'none';
+            
+            const chatHeader = document.querySelector('.chat-header');
+            if (chatHeader) chatHeader.style.display = 'none';
+            const messageControls = document.getElementById('messageControls');
+            if (messageControls) messageControls.style.display = 'none';
+            
+            const startChatInterface = document.getElementById('startChatInterface');
+            if (startChatInterface) {
+                startChatInterface.style.display = 'flex';
+                const mainDialInput = document.getElementById('mainDialInput');
+                if (mainDialInput) mainDialInput.focus();
+            }
+        }
+        
+        function showHomeView() {
+            currentChatId = null;
+            if (conn) {
+                conn = null;
+            }
+            
+            const startChatInterface = document.getElementById('startChatInterface');
+            if (startChatInterface) startChatInterface.style.display = 'none';
+            
+            const emptyState = document.getElementById('chatEmptyState');
+            if (emptyState) emptyState.classList.remove('hidden');
+            
+            const messages = document.getElementById('messages');
+            if (messages) {
+                messages.style.display = 'block';
+                messages.innerHTML = '';
+            }
+            
+            const chatHeader = document.querySelector('.chat-header');
+            if (chatHeader) chatHeader.style.display = 'flex';
+            const messageControls = document.getElementById('messageControls');
+            if (messageControls) messageControls.style.display = 'flex';
+            
+            const peerName = document.querySelector('.peer-name');
+            if (peerName) peerName.textContent = 'Not Connected';
+            const peerStatus = document.querySelector('.peer-status');
+            if (peerStatus) peerStatus.textContent = 'Select a chat or dial a number to begin';
+            const peerAvatar = document.querySelector('.peer-avatar');
+            if (peerAvatar) peerAvatar.textContent = '';
+            
+            document.body.classList.remove('connected');
+            
+            console.log('Returned to home view. All connections remain active.');
+        }
+        
         // ============ TOAST NOTIFICATIONS ============
         function showToast(message, type = 'info') {
             const container = document.getElementById('toastContainer');
@@ -3272,8 +3491,6 @@
         const elements = {
             intro: document.getElementById('intro'),
             chatPage: document.getElementById('chatPage'),
-            dialBtn: document.getElementById('dialBtn'),
-            dialInput: document.getElementById('dialInput'),
             myPhoneNumber: document.getElementById('myPhoneNumber'),
             messages: document.getElementById('messages'),
             messageInput: document.getElementById('messageInput'),
@@ -3622,11 +3839,6 @@
                 document.getElementById('onlineStatus').textContent = 'Connected';
                 document.getElementById('onlineStatus').classList.add('online');
                 
-                // Hide empty state when connected
-                const emptyState = document.getElementById('chatEmptyState');
-                if (emptyState) emptyState.classList.add('hidden');
-                
-                document.querySelector('.connection-setup').style.display = 'none';
                 document.getElementById('messages').innerHTML = '';
                 document.querySelector('.chat-header').style.display = 'flex';
                 document.getElementById('messages').style.display = 'block';
@@ -4123,23 +4335,31 @@
             }
         });
 
-        // Dial/Call button handler
-        elements.dialBtn.addEventListener('click', () => {
-            dialNumber('call');
+        // Main Call button handler (in Start a Chat interface)
+        document.getElementById('mainCallBtn').addEventListener('click', () => {
+            dialNumberFromMain('call');
         });
 
-        // Text button handler
-        document.getElementById('textBtn').addEventListener('click', () => {
-            dialNumber('text');
+        // Main Text button handler (in Start a Chat interface)
+        document.getElementById('mainTextBtn').addEventListener('click', () => {
+            dialNumberFromMain('text');
         });
 
-        // Shared dial function for both Call and Text
-        function dialNumber(mode) {
-            const dialInput = elements.dialInput.value.trim();
+        // Dial function for main Start a Chat interface
+        function dialNumberFromMain(mode) {
+            const dialInput = document.getElementById('mainDialInput').value.trim();
             if (!dialInput) {
-                addMessage('System: Please enter a phone number.', 'system-message');
+                alert('Please enter a phone number.');
                 return;
             }
+            
+            // Hide the Start a Chat interface
+            document.getElementById('startChatInterface').style.display = 'none';
+            document.getElementById('messages').style.display = 'block';
+            
+            // Show chat header and message controls
+            document.querySelector('.chat-header').style.display = 'flex';
+            document.getElementById('messageControls').style.display = 'flex';
             
             // Normalize the input to digits only, then create peer ID
             const rawDigits = PhoneData.normalizeToDigits(dialInput);
@@ -4197,8 +4417,10 @@
             }
             
             // Clear the input
-            elements.dialInput.value = '';
+            document.getElementById('mainDialInput').value = '';
         }
+
+        // Old dialNumber function removed - now using dialNumberFromMain
         
         // Direct call initiation for dialer
         async function initiateCallDirect(peerId, peerName, peerInitial, withVideo) {
@@ -4333,11 +4555,6 @@
         function toggleSidebar() {
             sidebar.classList.toggle('active');
             sidebarOverlay.classList.toggle('active');
-        }
-        
-        function closeSidebar() {
-            sidebar.classList.remove('active');
-            sidebarOverlay.classList.remove('active');
         }
         
         sidebarToggle.addEventListener('click', toggleSidebar);
@@ -4528,47 +4745,7 @@
             }
         });
         
-        // Show dialer function - shows sidebar dial interface
-        function showDialer() {
-            // Show the connection setup in sidebar
-            const connectionSetup = document.querySelector('.connection-setup');
-            if (connectionSetup) {
-                connectionSetup.style.display = 'block';
-                document.getElementById('dialInput').focus();
-            }
-        }
-        
-        // Show home view - returns to welcome screen without disconnecting
-        function showHomeView() {
-            // Clear current chat view but keep connections alive
-            currentChatId = null;
-            if (conn) {
-                conn = null; // Clear the active connection reference but don't close it
-            }
-            
-            // Show the empty state (welcome screen)
-            const emptyState = document.getElementById('chatEmptyState');
-            if (emptyState) emptyState.classList.remove('hidden');
-            
-            // Show messages container and controls
-            document.getElementById('messages').style.display = 'block';
-            document.getElementById('messages').innerHTML = '';
-            
-            // Show chat header and message controls
-            document.querySelector('.chat-header').style.display = 'flex';
-            document.getElementById('messageControls').style.display = 'flex';
-            
-            // Reset header
-            document.querySelector('.peer-name').textContent = 'Not Connected';
-            document.querySelector('.peer-status').textContent = 'Select a chat or dial a number to begin';
-            document.querySelector('.peer-avatar').textContent = '';
-            
-            // Keep status as online
-            document.body.classList.remove('connected');
-            
-            // All connections remain active in activeChats for receiving messages
-            console.log('Returned to home view. All connections remain active.');
-        }
+        // showDialer and showHomeView functions are defined at the top of the script
         
         // ============ NEW FEATURES ============
         
