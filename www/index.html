@@ -3444,6 +3444,9 @@
         let currentChatId = null;
         let contextMenuTarget = null;
         let contextMenuMsgId = null;
+        let pendingMessages = {};
+        let contacts = JSON.parse(localStorage.getItem('quickwrap_contacts') || '[]');
+        let reconnectionAttempts = {};
         
         // ============ TOAST NOTIFICATIONS ============
         function showToast(message, type = 'info') {
@@ -3515,7 +3518,27 @@
                     isSavedContact: activeChats[chatId].isSavedContact || false
                 };
             }
-            localStorage.setItem(key, JSON.stringify(toSave));
+            try {
+                localStorage.setItem(key, JSON.stringify(toSave));
+            } catch (e) {
+                if (e.name === 'QuotaExceededError') {
+                    console.error('Storage quota exceeded. Clearing old messages.');
+                    // Keep only last 50 messages per chat
+                    for (const chatId in toSave) {
+                        if (toSave[chatId].messages && toSave[chatId].messages.length > 50) {
+                            toSave[chatId].messages = toSave[chatId].messages.slice(-50);
+                        }
+                    }
+                    try {
+                        localStorage.setItem(key, JSON.stringify(toSave));
+                    } catch (e2) {
+                        console.error('Failed to save chats even after cleanup:', e2);
+                        showToast('Storage full - some messages may not be saved', 'error');
+                    }
+                } else {
+                    console.error('Failed to save chats:', e);
+                }
+            }
         }
         
         function deleteChat(chatId) {
@@ -3564,6 +3587,103 @@
                 }
                 
                 addMessage(`Contact "${name.trim()}" saved!`, 'system-message');
+            }
+        }
+
+        // ============ MESSAGE QUEUE FOR OFFLINE USERS ============
+        function getPendingMessagesKey() {
+            const username = Auth.getCurrentUser();
+            return `quickwrap_pending_${username}`;
+        }
+        
+        function loadPendingMessages() {
+            const key = getPendingMessagesKey();
+            const saved = localStorage.getItem(key);
+            if (saved) {
+                try {
+                    pendingMessages = JSON.parse(saved);
+                } catch (e) {
+                    console.error('Failed to load pending messages:', e);
+                    pendingMessages = {};
+                }
+            }
+        }
+        
+        function savePendingMessages() {
+            const key = getPendingMessagesKey();
+            try {
+                localStorage.setItem(key, JSON.stringify(pendingMessages));
+            } catch (e) {
+                console.error('Failed to save pending messages:', e);
+                if (e.name === 'QuotaExceededError') {
+                    showToast('Storage full - pending messages may not be saved', 'error');
+                }
+            }
+        }
+        
+        function queueMessage(chatId, messageText) {
+            if (!pendingMessages[chatId]) {
+                pendingMessages[chatId] = [];
+            }
+            
+            // Check for duplicate messages (same text within last 5 seconds)
+            const now = new Date().toISOString();
+            const recentDuplicate = pendingMessages[chatId].find(msg => {
+                const msgTime = new Date(msg.timestamp);
+                const timeDiff = new Date(now) - msgTime;
+                return msg.text === messageText && timeDiff < 5000;
+            });
+            
+            if (recentDuplicate) {
+                console.log('Duplicate message detected, skipping queue');
+                return;
+            }
+            
+            // Limit queue size to 100 messages per chat
+            if (pendingMessages[chatId].length >= 100) {
+                console.warn('Message queue full for', chatId, '- removing oldest message');
+                pendingMessages[chatId].shift();
+                showToast('Message queue full - oldest message removed', 'error');
+            }
+            
+            pendingMessages[chatId].push({
+                text: messageText,
+                timestamp: now,
+                id: 'msg-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9)
+            });
+            savePendingMessages();
+            console.log('Message queued for', chatId, ':', messageText);
+        }
+        
+        function sendPendingMessages(chatId, connection) {
+            if (!pendingMessages[chatId] || pendingMessages[chatId].length === 0) {
+                return;
+            }
+            
+            console.log('Sending', pendingMessages[chatId].length, 'pending messages to', chatId);
+            
+            const messages = [...pendingMessages[chatId]];
+            pendingMessages[chatId] = [];
+            savePendingMessages();
+            
+            messages.forEach((msg, index) => {
+                setTimeout(() => {
+                    try {
+                        if (connection && connection.open) {
+                            connection.send(msg.text);
+                            console.log('Sent pending message:', msg.text);
+                        } else {
+                            queueMessage(chatId, msg.text);
+                        }
+                    } catch (error) {
+                        console.error('Failed to send pending message:', error);
+                        queueMessage(chatId, msg.text);
+                    }
+                }, index * 100);
+            });
+            
+            if (messages.length > 0) {
+                showToast(`Sent ${messages.length} pending message(s)`, 'success');
             }
         }
 
@@ -3647,6 +3767,9 @@
             
             // Load saved chats from storage
             loadSavedChats();
+            
+            // Load pending messages from storage
+            loadPendingMessages();
         }
 
         function setupPeer(id, initiator) {
@@ -3846,6 +3969,9 @@
                     document.querySelector('.peer-status').textContent = 'Connected';
                 }
                 
+                // Send any pending messages for this chat
+                sendPendingMessages(peerId, connection);
+                
                 updateChatsList();
             });
             
@@ -4004,47 +4130,68 @@
             addMessage(`You: ${text}`, 'your-message');
             elements.messageInput.value = '';
             
+            // Get the connection for this chat
+            const chatConnection = activeChats[currentChatId]?.connection;
+            
             // Try to send if connected, otherwise queue it
-            if (conn && conn.open) {
+            if (chatConnection && chatConnection.open) {
                 // Connected - send immediately
                 try {
-                    conn.send(text);
+                    chatConnection.send(text);
+                    console.log('Message sent immediately');
                 } catch (error) {
                     console.error('Send error:', error);
+                    queueMessage(currentChatId, text);
+                    showToast('Message queued - will send when user is online', 'info');
                 }
             } else {
-                // Not connected - save message and try to reconnect in background
-                console.log('User offline. Message saved locally.');
+                // Not connected - queue the message
+                queueMessage(currentChatId, text);
+                showToast('User offline - message queued for delivery', 'info');
+                console.log('User offline. Message queued.');
                 
-                // Try to reconnect in the background (non-blocking)
+                // Try to reconnect in the background (non-blocking) with retry limit
                 if (peer && !peer.destroyed) {
+                    // Initialize retry counter for this chat if not exists
+                    if (!reconnectionAttempts[currentChatId]) {
+                        reconnectionAttempts[currentChatId] = 0;
+                    }
+                    
+                    // Check if we've exceeded max retry attempts (3)
+                    if (reconnectionAttempts[currentChatId] >= 3) {
+                        console.log('Max reconnection attempts reached for', currentChatId);
+                        return;
+                    }
+                    
+                    reconnectionAttempts[currentChatId]++;
+                    
                     try {
-                        conn = peer.connect(currentChatId, { reliable: true });
+                        const newConn = peer.connect(currentChatId, { reliable: true });
                         
-                        conn.on('open', () => {
+                        newConn.on('open', () => {
                             console.log('Reconnected in background');
-                            elements.status.textContent = 'Status: Connected';
-                            document.querySelector('.peer-status').textContent = 'Connected';
-                            document.getElementById('onlineStatus').classList.add('online');
-                            document.getElementById('onlineStatus').querySelector('span:last-child').textContent = 'Online';
+                            
+                            // Reset reconnection attempts on successful connection
+                            reconnectionAttempts[currentChatId] = 0;
                             
                             // Update the connection in activeChats
                             if (activeChats[currentChatId]) {
-                                activeChats[currentChatId].connection = conn;
+                                activeChats[currentChatId].connection = newConn;
+                            }
+                            
+                            // Update conn if this is the current chat
+                            if (currentChatId === newConn.peer) {
+                                conn = newConn;
                             }
                             
                             // Setup connection handlers
-                            setupConnection();
+                            setupConnectionForChat(newConn, currentChatId);
                             
-                            // Try to send the message now
-                            try {
-                                conn.send(text);
-                            } catch (e) {
-                                console.error('Failed to send queued message:', e);
-                            }
+                            // Send all pending messages
+                            sendPendingMessages(currentChatId, newConn);
                         });
                         
-                        conn.on('error', (err) => {
+                        newConn.on('error', (err) => {
                             console.log('Background reconnect failed - user still offline');
                         });
                         
@@ -4213,6 +4360,12 @@
         function reconnectToChat(peerId) {
             if (!peer || peer.destroyed) {
                 document.querySelector('.peer-status').textContent = 'Error: Not online';
+                return;
+            }
+            
+            if (!activeChats[peerId]) {
+                console.error('Cannot reconnect: chat does not exist');
+                document.querySelector('.peer-status').textContent = 'Error: Chat not found';
                 return;
             }
             
@@ -4778,6 +4931,10 @@
             // Populate settings country dropdown
             populateSettingsCountries();
             
+            // Update toggle states
+            document.getElementById('themeToggle').classList.toggle('active', !isDarkTheme);
+            document.getElementById('soundToggle').classList.toggle('active', soundEnabled);
+            
             modal.classList.add('active');
         }
         
@@ -5178,7 +5335,7 @@
         });
         
         // ============ NOTIFICATION SOUNDS ============
-        let soundEnabled = true;
+        let soundEnabled = localStorage.getItem('quickwrap_sound') !== 'off';
         
         function playNotificationSound() {
             if (!soundEnabled) return;
@@ -5205,10 +5362,16 @@
         }
         
         // ============ CONTACTS SYSTEM ============
-        let contacts = JSON.parse(localStorage.getItem('quickwrap_contacts') || '[]');
         
         function saveContactsToStorage() {
-            localStorage.setItem('quickwrap_contacts', JSON.stringify(contacts));
+            try {
+                localStorage.setItem('quickwrap_contacts', JSON.stringify(contacts));
+            } catch (e) {
+                console.error('Failed to save contacts:', e);
+                if (e.name === 'QuotaExceededError') {
+                    showToast('Storage full - contacts may not be saved', 'error');
+                }
+            }
         }
         
         function openAddContactModal() {
@@ -5259,17 +5422,6 @@
             localStorage.setItem('quickwrap_sound', soundEnabled ? 'on' : 'off');
             document.getElementById('soundToggle').classList.toggle('active', soundEnabled);
         }
-        
-        // Initialize sound setting
-        soundEnabled = localStorage.getItem('quickwrap_sound') !== 'off';
-        
-        // Update toggle states on settings open
-        const originalOpenSettings = openSettings;
-        openSettings = function() {
-            originalOpenSettings();
-            document.getElementById('themeToggle').classList.toggle('active', !isDarkTheme);
-            document.getElementById('soundToggle').classList.toggle('active', soundEnabled);
-        };
         
         // ============ MESSAGE REACTIONS ============
         const reactionEmojis = ['❤️', '👍', '😂', '😮', '😢', '🔥'];
