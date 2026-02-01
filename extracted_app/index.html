@@ -3263,6 +3263,22 @@
     </div>
 
     <script>
+        // Detect if running in Capacitor (mobile app) or Electron (desktop app)
+        (function() {
+            // Check for Capacitor
+            if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
+                document.body.classList.add('is-mobile-app');
+            }
+            // Also check for Capacitor by checking if we're in a webview
+            if (window.Capacitor || navigator.userAgent.includes('Capacitor')) {
+                document.body.classList.add('is-mobile-app');
+            }
+            // Check for Electron (desktop app) - use userAgent since contextIsolation is enabled
+            if (navigator.userAgent.includes('Electron')) {
+                document.body.classList.add('is-desktop-app');
+            }
+        })();
+
         // Initialize admin account
         Auth.initAdmin();
 

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=5.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Quick Wrap - Simple P2P Chat</title>
     <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
@@ -78,6 +78,18 @@
             justify-content: center;
         }
         .is-desktop-app .intro-right {
+            flex: none;
+            max-width: 400px;
+        }
+        /* Hide download section in mobile/Capacitor app */
+        .is-mobile-app .intro-left,
+        .is-mobile-app .download-section {
+            display: none !important;
+        }
+        .is-mobile-app .intro-main {
+            justify-content: center;
+        }
+        .is-mobile-app .intro-right {
             flex: none;
             max-width: 400px;
         }
@@ -2778,7 +2790,7 @@
 </head>
 <body>
     <div id="intro">
-        <img class="intro-logo" src="24E694E8-F40A-46B0-8809-DED26FF7E3CE (1).png" alt="Quick Wrap logo">
+        <img class="intro-logo" src="logo.png" alt="Quick Wrap logo">
         <h1>Quick Wrap: Simple TEXT Chat</h1>
         <div class="privacy-badge">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -3292,6 +3304,22 @@
     </div>
 
     <script>
+        // Detect if running in Capacitor (mobile app) or Electron (desktop app)
+        (function() {
+            // Check for Capacitor
+            if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
+                document.body.classList.add('is-mobile-app');
+            }
+            // Also check for Capacitor by checking if we're in a webview
+            if (window.Capacitor || navigator.userAgent.includes('Capacitor')) {
+                document.body.classList.add('is-mobile-app');
+            }
+            // Check for Electron (desktop app) - use userAgent since contextIsolation is enabled
+            if (navigator.userAgent.includes('Electron')) {
+                document.body.classList.add('is-desktop-app');
+            }
+        })();
+
         // Initialize admin account
         Auth.initAdmin();
 

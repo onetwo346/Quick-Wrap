@@ -3314,8 +3314,8 @@
             if (window.Capacitor || navigator.userAgent.includes('Capacitor')) {
                 document.body.classList.add('is-mobile-app');
             }
-            // Check for Electron (desktop app)
-            if (window.electron || (window.process && window.process.type)) {
+            // Check for Electron (desktop app) - use userAgent since contextIsolation is enabled
+            if (navigator.userAgent.includes('Electron')) {
                 document.body.classList.add('is-desktop-app');
             }
         })();
